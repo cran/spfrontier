@@ -1,0 +1,46 @@
+\docType{data}
+\name{airports.greece}
+\alias{airports.greece}
+\title{Greece airports statistical data}
+\format{A dataframe with 39 observations on the following 24 variables.
+
+\describe{
+
+\item{name}{Airport title}
+\item{ICAO_code}{Airport ICAO code}
+\item{lat}{Airport latitude}
+\item{lon}{Airport longitude}
+\item{APM_winter}{A number of passengers carried during winter period}
+\item{APM_summer}{A number of passengers carried during summer period}
+\item{APM}{A number of passengers carried (winter + summer)}
+\item{cargo_winter}{A total volume of cargo served by an airport during winter period}
+\item{cargo_summer}{A total volume of cargo served by an airport during summer period}
+\item{cargo}{A number volume of cargo served by an airport (winter + summer)}
+\item{ATM_winter}{A number of air transport movements served by an airport during winter period}
+\item{ATM_summer}{A number of air transport movements served by an airport during summer period}
+\item{ATM}{A number of air transport movements served by an airport (winter + summer)}
+\item{openning_hours_winter}{A total number openning hours during winter period}
+\item{openning_hours_summer}{A total number openning hours during summer period}
+\item{openning_hours}{A total number openning hours (winter + summer)}
+\item{runway_area}{A total area of airport runways}
+\item{terminal_area}{A total area of airport terminal(s)}
+\item{parking_area}{A total area of airport parking area}
+\item{island}{1 if an airpiort is located on an island; 0 otherwise}
+\item{international}{1 if an airpiort is international; 0 otherwise}
+\item{mixed_use}{1 if an airpiort is in mixed use; 0 otherwise}
+\item{WLU}{A total volume of work load units (WLU) served by an airport}
+\item{NearestCity}{A road network distance between an airport and its nearest city }
+
+}}
+\source{
+\describe{ \item{}{"Airport efficiency and public
+investment in Greece" (2010) In Proceeding of the 2010
+International Kuhmo-Nectar Conference on Transport
+Economics, University of Valencia, Spain.} }
+}
+\description{
+The \code{spfrontier} package includes the dataset
+\code{airports}, containing information about Greece
+airports infrastructure and traffic statistics in 2011.
+}
+

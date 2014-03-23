@@ -1,0 +1,335 @@
+# Copyright 2014 by Dmitry Pavlyuk <Dmitry.V.Pavlyuk@gmail.com>
+
+#
+# Spatial stochastic frontier model estimation
+#
+
+
+#' @title Spatial stochastic frontier model
+#'
+#' @description
+#' \code{spfrontier} estimates spatial specifications of 
+#' the stochastic frontier model.
+#' 
+#' @details
+#' Models for estimation are specified symbolically, but without any spatial components.
+#' Spatial components are included implicitly on the base of the \code{model} argument.
+#' 
+#' 
+#' @param formula an object of class "\code{\link{formula}}": 
+#' a symbolic description of the model to be fitted. 
+#' The details of model specification are given under 'Details'.
+#' @param data data frame, containing the variables in the model
+#' @param W_y a spatial weight matrix for spatial lag of the dependent variable
+#' @param W_v a spatial weight matrix for spatial lag of the symmetric error term
+#' @param W_u a spatial weight matrix for spatial lag of the inefficiency error term
+#' @param initialValues an optional vector of initial values, used by maximum likelihood estimator.
+#' If not defined, estimator-specific method of initial values estimation is used.
+#' @param logging an optional level of logging. Possible values are 'quiet','warn','info','debug'. 
+#' By default set to quiet.
+#' @param inefficiency sets the distribution for inefficiency error component. Possible values are 'half-normal' (for half-normal distribution) and 'truncated' (for truncated normal distribution). 
+#' By default set to 'half-normal'. See references for explanations
+#' @param onlyCoef allows calculating only estimates for coefficients (with inefficiencies and other additional statistics). Developed generally for testing, to speed up the process.
+#' @param control an optional list of control parameters, 
+#' passed to \code{\link{optim}} estimator from the '\code{\link{stats}} package
+#' 
+#' 
+#' @keywords spatial stochastic frontier
+#' @export
+#' @references 
+#' Kumbhakar, S.C. and Lovell, C.A.K (2000), Stochastic Frontier Analysis, Cambridge University Press, U.K.
+#' @examples
+#' data( airports )
+#' W <- constructW(cbind(airports$lon, airports$lat),airports$ICAO_code)
+#' 
+#' formula <- log(PAX) ~ log(runways) + log(checkins) +log (gates)
+#' ols <- lm(formula , data=airports)
+#' summary(ols )
+#' plot(density(stats::residuals(ols)))
+#' skewness(stats::residuals(ols))
+#' 
+#' model <- spfrontier(formula , data=airports)
+#' summary(model )
+#' 
+#' model <- spfrontier(formula , data=airports, W_y=W)
+#' summary(model )
+#' 
+spfrontier <- function(formula, data,
+                       W_y = NULL, W_v = NULL,W_u = NULL,
+                       inefficiency = "half-normal",
+                       initialValues=NULL,
+                       logging = c("quiet", "info", "debug"),
+                       control=NULL,
+                       onlyCoef = F){
+    #Validation of model parameters
+    logging <- match.arg(logging)
+    con <- list(grid.beta0 = 1, grid.sigmaV = 1, grid.sigmaU = 1, grid.rhoY = 1, grid.rhoU = 10, grid.rhoV = 10, grid.mu = 1,
+                optim.control = list())
+    namc <- names(control)
+    con[namc] <- control
+    noNms <- namc[!namc %in% names(con)]
+    if (length(noNms)>0) 
+        warning("Unknown parameters in control: ", paste(noNms, collapse = ", "))
+    
+    #End of model parameters' validation 
+    
+    initEnvir(W_y=W_y, W_v=W_v,W_u=W_u,inefficiency=inefficiency,
+              initialValues=initialValues,logging=logging,control=con)
+    logging("Estimator started", level="info")
+    
+    #Preparing the environment
+    mf <- model.frame(formula, data)
+    y <- as.matrix(model.response(mf))
+    X <- as.matrix(mf[-1])
+    tm <- attr(mf, "terms")
+    intercept <- attr(tm, "intercept") == 1
+    if (intercept){
+        X <- cbind(Intercept=1L,X)
+    }
+    k <- ncol(X)
+    n <- length(y)
+    envirAssign("X", X)
+    envirAssign("y", y)
+    isSpY <- !is.null(W_y)
+    isSpV <- !is.null(W_v)
+    isSpU <- !is.null(W_u)
+    isTN <- (inefficiency == "truncated")
+    if ((isSpV || isSpU) &&(logging!="debug")){
+        cat("MLE can take a long time for spatial lags in error components. This is recommended to use logging='debug' to control the progress")
+    }
+    #if(!is.null(tv)){
+    #    logging("logL at true value:", funcLogL.direct(tv))
+    #}
+    
+    if (is.null(initialValues)){
+        logging("Calculating initial values",level="info")
+        iniParams <- calculateInitialValues(formula, data)
+        initialValues <- paramsToVector(olsenReparam(iniParams))
+        logging("Initial values:", paramsToVector(iniParams, olsen=F),level="info")
+    }else{
+        initialValues <- paramsToVector(olsenReparam(paramsFromVector(initialValues, k, isSpY, isSpV, isSpU, isTN, olsen=F)))
+    }
+    grad <- NULL
+    if (!isSpV && !isSpU){
+        grad <- funcGradient
+    }
+    estimates <- optimEstimator(formula, data, 
+                                funcLogL, 
+                                ini = initialValues, 
+                                gr=grad)
+    logging(paste("Completed, status =", status(estimates)), level = "info")
+    if(status(estimates) == 0){
+        olsenP <- paramsFromVector(resultParams(estimates), k, isSpY, isSpV, isSpU, isTN)
+    p <- olsenReparamBack(olsenP)
+    coefficients(estimates) <- p
+    
+    logging("Final estimates:", paramsToVector(p, olsen=F), level = "info")
+    
+    if(!onlyCoef){
+        logging("Preparing additional statistics...")
+        fittedY <- X %*% p$beta
+        if (!is.null(p$rhoY)){
+            Sp1 <- solve(diag(n) - p$rhoY * W_y)
+            fittedY <- Sp1 %*% fittedY
+        }
+        rownames(fittedY) <- rownames(X)
+        colnames(fittedY) <- c("Fitted values")
+        fitted(estimates) <- fittedY
+        
+        resid <- y - fittedY
+        rownames(resid) <- rownames(y)
+        colnames(resid) <- c("Residuals")
+        residuals(estimates) <- resid
+    
+        tryCatch({
+            logging("Calculating stdErrors...")
+            #hess <- optimHess(paramsToVector(p, olsen = F),funcLogL.direct)
+            #hessian(estimates) <- hess
+            
+            G <- olsenGradient(olsenP)
+            iH <- solve(hessian(estimates))
+            stdErrors(estimates) <- sqrt(diag(G%*%iH%*%t(G)))
+            logging("Done")
+        }, error = function(e){
+            logging(e$message, level="warn")
+        })
+        tryCatch({
+            logging("Calculating efficiencies...")
+            if (is.null(p$rhoV) && is.null(p$rhoU) ){
+                sigma <- sqrt(p$sigmaU^2 + p$sigmaV^2)
+                A <- resid * (p$sigmaU / p$sigmaV) / sigma
+                u <- (dnorm(A) / (1 - pnorm(A)) - A) * p$sigmaU * p$sigmaV / sigma
+            }else{
+                I <- diag(n)
+                SpV <- I
+                SpU <- I
+                
+                if (!is.null(p$rhoV))
+                    SpV <- solve(I-p$rhoV*W_v)
+                if (!is.null(p$rhoU))
+                    SpU <- solve(I-p$rhoU*W_u)
+                
+                mSigma = p$sigmaV^2*SpV%*%t(SpV)
+                mOmega = p$sigmaU^2*SpU%*%t(SpU)
+                mC = mSigma + mOmega
+                imC <- solve(mC)
+                mB = mOmega%*%imC%*%mSigma 
+                
+                #Livehack for calculation precision
+                rownames(mB) <- colnames(mB)
+                mB <- as.matrix(nearPD(mB)$mat)
+                
+                mA = mB %*% solve(mSigma)
+                mD = -mB %*% solve(mOmega)
+                mu <- 0
+                if(isTN){
+                    mu <- p$mu
+                }
+                vMu = rep(mu, n)
+                u <- mtmvnorm(lower= rep(0, n),mean=as.vector(t(-mA%*%resid-mD%*%vMu)), sigma=mB, doComputeVariance=FALSE)$tmean
+            }
+            eff <- cbind(exp(-u))
+            rownames(eff) <- rownames(y)
+            colnames(eff) <- c("Efficiency values")
+            efficiencies(estimates) <- eff
+        }, error = function(e){
+            logging(e$message,p$rhoV, level="warn")
+        })
+    }
+    }
+    logging("Done!")
+    finalizeEnvir()
+    
+    return(estimates)
+}
+
+calculateInitialValues <- function (formula, data) {
+    y <- envirGet("y")
+    X <- envirGet("X")
+    k <- ncol(X)
+    W_y <- envirGet("W_y")
+    W_v <- envirGet("W_v")
+    W_u <- envirGet("W_u")
+    inefficiency <- envirGet("inefficiency")
+    isSpY <- !is.null(W_y)
+    isSpV <- !is.null(W_v)
+    isSpU <- !is.null(W_u)
+    isTN <- (inefficiency == "truncated")
+    iniParams <- list()
+    f <- formula
+    if (isSpY){
+        data$Wy <- W_y %*% y
+        f <- update(formula,    ~ . + Wy)
+    }
+    e <- NULL
+    found <- F
+    if (isSpY){
+        iniParams$rhoY <- 0
+        inconsistentSpatial <- spfrontier(f, data, logging="quiet",onlyCoef=F)
+        coef <- coefficients(inconsistentSpatial)
+        if (length(coef)>0){
+            iniParams$rhoY = tail(coef$beta, n=1)
+            iniParams$beta = head(coef$beta, -1)
+            iniParams$sigmaU <- coef$sigmaU
+            iniParams$sigmaV <- coef$sigmaV
+            e <- residuals(inconsistentSpatial)
+            found <- T
+        }
+    }
+    if(!found){
+        sfa <- sfaInitialValues(f, data)
+        if (isSpY){
+            iniParams$rhoY = tail(sfa$beta, n=1)
+            iniParams$beta = head(sfa$beta, -1)
+        }else{
+            iniParams$beta <- sfa$beta
+        }
+        e <- sfa$residuals
+        iniParams$sigmaU <- sfa$sigmaU
+        iniParams$sigmaV <- sfa$sigmaV
+    }
+    
+    mu <- -mean(e) 
+    
+    if (isSpV){
+        We <- W_v %*% e
+        sarResiduals <- lm(e ~ We - 1, data = data.frame(e, We))
+        iniParams$rhoV <- coef(sarResiduals)
+        mu <- -mean(stats::residuals(sarResiduals))
+    }
+    if (isSpU){
+        iniParams$rhoU <- 0
+    }
+    if(isTN){
+        iniParams$mu <- mu
+    }
+    if (isSpU || isSpV){
+        iniParams <- gridSearch(iniParams)
+    }
+    initialValues <- iniParams
+    return(initialValues)
+}
+
+gridSearch <- function(params){
+    con <- envirGet("control")
+    
+    if (is.null(params$rhoV) && is.null(params$rhoU)){
+        return(params)
+    }
+    logging("Grid search for initial values")
+    gridVal <- list()
+    c <-0 
+    for(b in params$beta){
+        if (c == 0){
+            gridVal[[paste("beta",c, sep="")]] <- seq(b,b + 3*params$sigmaV,length.out = con$grid.beta0)
+        }else{
+            gridVal[[paste("beta",c, sep="")]] <- b
+        }
+        c <- c+1
+    }
+    if (!is.null(params$rhoY)){
+        gridVal$rho = params$rhoY
+    }
+    gridVal$sigmaV = c(params$sigmaV,seq(params$sigmaV-0.5*params$sigmaV, params$sigmaV+0.5*params$sigmaV, length.out = con$grid.sigmaV))
+    #gridVal$sigmaU = params$sigmaU
+    gridVal$sigmaU = c(params$sigmaU,seq(params$sigmaU-0.5*params$sigmaU, params$sigmaU+0.5*params$sigmaU, length.out = con$grid.sigmaU))
+    if (!is.null(params$rhoV)){
+        gridVal$rhoV = seq(-0.99, 0.99, length.out = con$grid.rhoV)
+    }
+    if (!is.null(params$rhoU)){
+        gridVal$rhoU = seq(-0.99, 0.99, length.out = con$grid.rhoU)
+    }
+    if (!is.null(params$mu)){
+        gridVal$mu = seq(params$mu-3*params$sigmaV,params$mu + 3*params$sigmaV,length.out = con$grid.mu)
+    }
+    grid <- expand.grid(gridVal)
+    
+    ml <- apply(grid, 1, funcLogL.direct)
+    opt <- min(ml)
+    ret <- as.vector(as.matrix(grid[which.min(ml), ]))
+    p <- paramsFromVector(ret,length(params$beta),!is.null(params$rhoY),!is.null(params$rhoV),!is.null(params$rhoU),!is.null(params$mu), olsen = F)
+    if (opt == 1e16){
+        if (!is.null(p$rhoV)) p$rhoV<-0
+        if (!is.null(p$rhoU)) p$rhoU<-0
+    }
+    return(p)
+}
+
+sfaInitialValues <- function(formula, data){
+    ols <- lm(formula, data=data)
+    res_ols <- stats::resid(ols)
+    m2 = sum(res_ols^2)/length(res_ols)
+    m3 = sum(res_ols^3)/length(res_ols)
+    sigmaU = (m3*sqrt(pi/2)/(1-4/pi))^(1/3)
+    sigmaV = 0
+    if (!is.nan(sigmaU) && (m2 - (1-2/pi)*sigmaU^2>0)){
+        sigmaV = sqrt(m2 - (1-2/pi)*sigmaU^2)
+    }
+    if ((sigmaU<=0) || (sigmaV<=0)){
+        sigmaU <- var(res_ols)*(1-2/pi)
+        sigmaV <- var(res_ols)
+    }
+    beta <- as.vector(coef(ols))
+    
+    return(list(beta = beta,sigmaV=sigmaV,sigmaU=sigmaU,residuals = res_ols))
+}

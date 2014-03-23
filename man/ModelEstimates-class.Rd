@@ -1,0 +1,117 @@
+\docType{class}
+\name{ModelEstimates-class}
+\alias{ModelEstimates-class}
+\alias{coefficients}
+\alias{coefficients,ModelEstimates-method}
+\alias{efficiencies}
+\alias{efficiencies,ModelEstimates-method}
+\alias{fitted}
+\alias{fitted,ModelEstimates-method}
+\alias{hessian}
+\alias{hessian,ModelEstimates-method}
+\alias{residuals}
+\alias{residuals,ModelEstimates-method}
+\alias{resultParams}
+\alias{resultParams,ModelEstimates-method}
+\alias{show,ModelEstimates-method}
+\alias{status}
+\alias{status,ModelEstimates-method}
+\alias{stdErrors}
+\alias{stdErrors,ModelEstimates-method}
+\alias{summary,ModelEstimates-method}
+\title{Model Estimation Results}
+\usage{
+status(object)
+
+resultParams(object)
+
+hessian(object)
+
+stdErrors(object)
+
+efficiencies(object)
+
+\S4method{show}{ModelEstimates}(object)
+
+\S4method{coefficients}{ModelEstimates}(object)
+
+\S4method{resultParams}{ModelEstimates}(object)
+
+\S4method{fitted}{ModelEstimates}(object)
+
+\S4method{efficiencies}{ModelEstimates}(object)
+
+\S4method{residuals}{ModelEstimates}(object)
+
+\S4method{stdErrors}{ModelEstimates}(object)
+
+\S4method{hessian}{ModelEstimates}(object)
+
+\S4method{status}{ModelEstimates}(object)
+
+\S4method{summary}{ModelEstimates}(object)
+}
+\arguments{
+  \item{object}{an object of ModelEstimates class}
+}
+\description{
+\code{ModelEstimates} stores information about MLE
+estimates of a spatial stochastic frontier model
+
+Method \code{status} returns estimation status
+
+Method \code{resultParams} returns raw estimated
+coefficients
+
+Method \code{hessian} returns Hessian matrix for estimated
+coefficients
+
+Method \code{stdErrors} returns standard errors of
+estimated coefficients
+
+Method \code{efficiencies} returns efficiency estimates
+
+Method \code{show} prints estimated coefficients
+
+Method \code{coefficients} returns estimated coefficients
+
+Method \code{fitted} returns model fitted values
+
+Method \code{residuals} returns residuals
+
+Method \code{summary} prints summary of the estimated model
+}
+\details{
+\code{ModelEstimates} stores all parameter estimates and
+additional statistics, available after estimation of a
+spatial stochastic frontier model.
+}
+\section{Slots}{
+
+\describe{
+\item{\code{coefficients}}{estimated values of model parameters}
+
+\item{\code{resultParams}}{raw estimated values}
+
+\item{\code{status}}{model estimation status:\cr
+0 - Success\cr
+1 - Failed; convergence is not archieved\cr
+1000 - Failed; unexpected exception\cr
+1001 - Failed; Initial values for MLe can not be estimated\cr
+1002 - Failed; Maximum likelihood function is infinite\cr}
+
+\item{\code{logL}}{value of the log-likelihood function}
+
+\item{\code{logLcalls}}{information abour a number of log-likelihood function and its gradient function calls}
+
+\item{\code{hessian}}{Hessian matrix for estimated coefficients}
+
+\item{\code{stdErrors}}{standard errors of estimated coefficients}
+
+\item{\code{residuals}}{model residuals}
+
+\item{\code{fitted}}{model fitted values}
+
+\item{\code{efficiencies}}{estimates of efficiency values for sample observations}
+}}
+
