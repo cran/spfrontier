@@ -5,41 +5,14 @@
 \usage{
 spfrontier.true.value()
 
-ezsimspfrontier(runs, autoSave = 0, params = list(n = c(50, 100), sigmaX =
-  10, beta0 = 1, beta1 = -2, beta2 = 3, sigmaV = 0.2, sigmaU = 0.75),
-  seed = NULL, inefficiency = "half-normal", logging = "info")
+ezsimspfrontier(runs, params, inefficiency = "half-normal",
+  logging = "info", control = list())
 }
 \arguments{
   \item{runs}{a number of simulated samples}
 
   \item{params}{a set with parameters to be used in
-  simulation. There are predefined parameter sets:\cr
-  params000 - a non-spatial stochastic frontier with
-  half-normal inefficiencies\cr params000T - a non-spatial
-  stochastic frontier with truncated normal
-  inefficiencies\cr params100 - a stochastic frontier with
-  spatial lags of a dependent variable and with half-normal
-  inefficiencies\cr params100T - a stochastic frontier with
-  spatial lags of a dependent variable and with truncated
-  normal inefficiencies\cr params110 - stochastic frontier
-  with spatial lags of a dependent variable and of a
-  symmetric error component and with half-normal
-  inefficiencies\cr params111 - stochastic frontier with
-  spatial lags of a dependent variable, a symmetric error
-  component, and an inefficiency error component and with
-  half-normal inefficiencies\cr params011 - stochastic
-  frontier with spatial lags of a symmetric error component
-  and an inefficiency error component and with half-normal
-  inefficiencies\cr params001 - stochastic frontier with
-  spatial lags an inefficiency error component and with
-  half-normal inefficiencies\cr}
-
-  \item{autoSave}{save intermediate results to files. See
-  \code{\link{ezsim}} for details.}
-
-  \item{seed}{a state for random number generation in R. If
-  NULL (default), the initial state is random. See
-  \code{\link{set.seed}} for details.}
+  simulation.}
 
   \item{inefficiency}{sets the distribution for
   inefficiency error component. Possible values are
@@ -51,6 +24,24 @@ ezsimspfrontier(runs, autoSave = 0, params = list(n = c(50, 100), sigmaX =
   \item{logging}{an optional level of logging. Possible
   values are 'quiet','warn','info','debug'. By default set
   to quiet.}
+
+  \item{control}{an optional list of control parameters for
+  simulation process. Currently the procedure supports:\cr
+  ignoreWy (TRUE/FALSE) - the spatial contiguity matrix for
+  a dependent variable is not provided to
+  \code{\link{spfrontier}} estimator (but used in DGP)
+  ignoreWv (TRUE/FALSE) - the spatial contiguity matrix for
+  a symmetric error term is not provided to
+  \code{\link{spfrontier}} estimator (but used in DGP)
+  ignoreWu (TRUE/FALSE) - the spatial contiguity matrix for
+  a inefficiency error term is not provided to
+  \code{\link{spfrontier}} estimator (but used in DGP)
+  parallel (TRUE/FALSE) - whether to use parallel computer
+  seed - a state for random number generation in R. If NULL
+  (default), the initial state is random. See
+  \code{\link{set.seed}} for details. auto_save - saves
+  intermediate results to files. See \code{\link{ezsim}}
+  for details.}
 }
 \description{
 \code{spfrontier.true.value} returns true parameter values
@@ -69,28 +60,17 @@ generated on the base of provided parameters. The resulting
 estimates can be analysed for biasedness, efficiency, etc.
 }
 \examples{
-# Define parameter values
-# params <- list(n=c(50,100),
-#                  sigmaX=10,
-#                  beta0=1,
-#                  beta1=-2,
-#                  beta2=3,
-#                  sigmaV=0.2,
-#                  sigmaU=0.75)
-
-# Run simulations (10 runs)
-# res <- ezsimspfrontier(10,
-#                          params = params,
-#                          seed = 99,
-#                          inefficiency = "half-normal",
-#                          logging = "quiet")
-#
-# Summary of simulation results
-# summary(res)
-
-# Plot estimates' convergence to true values and estimates' density
-#plot(res)
-#plot(res, 'density')
+params000 <- list(n=c(50, 100),beta0=5,
+                 beta1=10,
+                 beta2=1,
+                 sigmaV=0.5,
+                 sigmaU=2.5)
+ctrl <- list(seed=999, cores=1)
+res000 <- ezsimspfrontier(2, params = params000,
+                 inefficiency = "half-normal",
+                 logging = "info",
+                 control=ctrl)
+summary(res000)
 }
 \seealso{
 \code{\link{ezsim}}

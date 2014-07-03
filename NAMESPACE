@@ -8,12 +8,14 @@ importFrom("mvtnorm", dmvnorm, pmvnorm, rmvnorm)
 importFrom("moments", skewness)
 importFrom("ezsim", ezsim, createParDef,createSimulationTable)
 importFrom("Matrix", nearPD)
+importFrom("parallel", detectCores, clusterApply, makeCluster, stopCluster)
 
 #
 # Exports
 #
 
 export(spfrontier)
+export(logLikelihood)
 export(ezsimspfrontier,spfrontier.true.value)
 export(genW, rowStdrt,constructW)
 

@@ -61,19 +61,20 @@ argument.
 }
 \examples{
 data( airports )
-W <- constructW(cbind(airports$lon, airports$lat),airports$ICAO_code)
-
-formula <- log(PAX) ~ log(runways) + log(checkins) +log (gates)
-ols <- lm(formula , data=airports)
+airports2011 <- subset(airports, Year==2011)
+W <- constructW(cbind(airports2011$longitude, airports2011$latitude),airports2011$ICAO)
+formula <- log(PAX) ~ log(Population100km) + log(Routes) + log(GDPpc)
+ols <- lm(formula , data=airports2011)
 summary(ols )
 plot(density(stats::residuals(ols)))
 skewness(stats::residuals(ols))
 
-model <- spfrontier(formula , data=airports)
-summary(model )
+# Takes >5 sec, see demo for more examples
+# model <- spfrontier(formula , data=airports2011)
+# summary(model )
 
-model <- spfrontier(formula , data=airports, W_y=W)
-summary(model )
+# model <- spfrontier(formula , data=airports2011, W_y=W)
+# summary(model )
 }
 \references{
 Kumbhakar, S.C. and Lovell, C.A.K (2000), Stochastic

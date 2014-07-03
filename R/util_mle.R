@@ -44,7 +44,7 @@ prepareEstimates <- function(estimates = NULL, status = 0){
         ret <- new("ModelEstimates",
                    resultParams = estimates$par,
                    status = estimates$convergence,
-                   logL = estimates$value,
+                   logL = -estimates$value,
                    logLcalls = estimates$counts,
                    hessian = estimates$hessian
         )

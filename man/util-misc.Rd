@@ -4,7 +4,7 @@
 \alias{rowStdrt}
 \title{Standard spatial contiguity matrixes}
 \usage{
-genW(n, type = "rook")
+genW(n, type = "rook", seed = NULL)
 
 rowStdrt(W)
 
@@ -19,6 +19,9 @@ constructW(coords, labels)
   Currently 'rook' and ''queen' values are supported, to
   produce Rook and Queen Contiguity matrix. See references
   for more info. By default set to rook.}
+
+  \item{seed}{an optional random number generator seed for
+  random matrices}
 
   \item{W}{a spatial contiguity matrix to be standatised}
 

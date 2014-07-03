@@ -14,11 +14,10 @@ logging <- function(message, obj = NULL, level = "debug", caller = sys.call(-1))
         lvl <- envirGet("logging")
         if (!is.null(lvl) 
                 && ((which(.loggingLevels == lvl) >=    which(.loggingLevels == level)))){
-                message(toupper(level)," ", toString(caller[[1]])," ", message)
+                message(toupper(level)," ", toString(caller[[1]])," (pid=",Sys.getpid(),") ", message)
                 if (!is.null(obj)){
                         print(obj)
                 }
                 flush.console()
-                Sys.sleep(0.1)
         }
 }

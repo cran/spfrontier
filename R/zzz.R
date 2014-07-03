@@ -3,6 +3,7 @@
 #
 # Package initialization
 #
+.spfrontierEnv <- new.env(hash=TRUE)
 
 #
 # Package attaching

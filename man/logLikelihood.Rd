@@ -1,0 +1,48 @@
+\name{logLikelihood}
+\alias{logLikelihood}
+\title{Calculation of the log likelihood function for the spatial stochastic frontier model}
+\usage{
+logLikelihood(formula, data, W_y = NULL, W_v = NULL, W_u = NULL,
+  inefficiency = "half-normal", values, logging = c("quiet", "info",
+  "debug"))
+}
+\arguments{
+  \item{formula}{an object of class
+  "\code{\link{formula}}"}
+
+  \item{data}{data frame, containing the variables in the
+  model}
+
+  \item{W_y}{a spatial weight matrix for spatial lag of the
+  dependent variable}
+
+  \item{W_v}{a spatial weight matrix for spatial lag of the
+  symmetric error term}
+
+  \item{W_u}{a spatial weight matrix for spatial lag of the
+  inefficiency error term}
+
+  \item{values}{a vector of log likelihood function
+  parameters}
+
+  \item{logging}{an optional level of logging. Possible
+  values are 'quiet','warn','info','debug'. By default set
+  to quiet.}
+
+  \item{inefficiency}{sets the distribution for
+  inefficiency error component. Possible values are
+  'half-normal' (for half-normal distribution) and
+  'truncated' (for truncated normal distribution). By
+  default set to 'half-normal'.}
+}
+\description{
+\code{logLikelihood} returns a value of the log likelihood
+function for the spatial stochastic frontier model
+}
+\details{
+This function is exported from the package for testing and
+presentation purposes A list of arguments of the function
+exactly matches the corresponding list of the
+\code{\link{spfrontier}} function
+}
+

@@ -164,6 +164,7 @@ olsenGradient<- function(par){
 #' @param n a number of objects with spatial interaction to be arranged.See 'Details' for objects arranging principle
 #' @param type an optional type of spatial interaction. Currently 'rook' and ''queen' values are supported, to produce Rook and Queen Contiguity matrix. See references for more info. 
 #' By default set to rook.
+#' @param seed an optional random number generator seed for random matrices 
 #' 
 #' @keywords spatial stochastic frontier
 #' @references 
@@ -183,24 +184,32 @@ olsenGradient<- function(par){
 #' queenW <- genW(100, type="queen")
 #' queenW
 
-genW <- function(n, type="rook"){
-    k <- ceiling(sqrt(n))
+genW <- function(n, type="rook", seed=NULL){
     W <- matrix(nrow=n, ncol=n, rep(0,n*n))
-    for (i in 1:n){
-        h <- (i-1) %/% k + 1
-        v <- (i-1) %% k + 1
-            for (dv in c(-1,0,1)){
-                for (dh in c(-1,0,1)){
-                    diff <- abs(dv) + abs(dh)
-                    v1 <- v + dv
-                    h1 <- h + dh
-                    neib <- (diff>0) & (v1 >0) & (h1 >0) & (v1 <=k) & (h1 <=k) & (type=="queen" || diff==1)
-                    if(neib){
-                        j <- v1 + (h1-1)*k
-                        if (j<=n) W[i,j] = 1
+    if (type=="rook" || type=="queen"){
+        k <- ceiling(sqrt(n))
+        for (i in 1:n){
+            h <- (i-1) %/% k + 1
+            v <- (i-1) %% k + 1
+                for (dv in c(-1,0,1)){
+                    for (dh in c(-1,0,1)){
+                        diff <- abs(dv) + abs(dh)
+                        v1 <- v + dv
+                        h1 <- h + dh
+                        neib <- (diff>0) & (v1 >0) & (h1 >0) & (v1 <=k) & (h1 <=k) & (type=="queen" || diff==1)
+                        if(neib){
+                            j <- v1 + (h1-1)*k
+                            if (j<=n) W[i,j] = 1
+                        }
                     }
                 }
-            }
+        }
+    }else if (type=="inverse distance"){
+        if (!is.null(seed)) set.seed(seed);
+        coords <- matrix(nrow=n, ncol=2, rnorm(n*2, mean=0, sd=1))
+        #plot(coords)
+        W <- constructW(coords, seq(1, n))
+        W[which(W<quantile(W,probs=0.5))] <- 0
     }
     return(W)
 }
@@ -269,6 +278,7 @@ constructW <- function(coords, labels){
 
 
 
+
 #
 # Returns significance code
 #
@@ -287,3 +297,5 @@ pvalMark <- function(pval){
     }
     return(m)
 }
+
+

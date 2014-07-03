@@ -1,6 +1,5 @@
 Infin <- -1e16
 funcLogL <- function(parameters, quiet = F){
-    
     y <- envirGet("y")
     X <- envirGet("X")
     k <- ncol(X)
@@ -46,19 +45,16 @@ funcLogL <- function(parameters, quiet = F){
             sigmaV <- 1/(p$nu*sqrt(1+p$lambda^2))
             sigmaU <- p$lambda * sigmaV
             
-            mSigma = sigmaV^2*SpV%*%t(SpV)
-            mOmega = sigmaU^2*SpU%*%t(SpU)
-            mC = mSigma + mOmega
-            imC <- solve(mC)
-            mB <- mOmega%*%imC%*%mSigma 
-            
+            mSigmaV = sigmaV^2*SpV%*%t(SpV)
+            mSigmaU = sigmaU^2*SpU%*%t(SpU)
+            mSigma = mSigmaV + mSigmaU
+            imSigma <- solve(mSigma)
+            mDelta <- mSigmaU%*%imSigma%*%mSigmaV 
+            mGamma <- -mSigmaU%*%imSigma
+            rownames(mDelta) <- colnames(mDelta)
             #Livehack for calculation precision
-            rownames(mB) <- colnames(mB)
-            mB <- as.matrix(nearPD(mB)$mat)
-            
-            mA <- mB %*% solve(mSigma)
-            mD <- -mB %*% solve(mOmega)
-            colnames(mB) <-rownames(mB)
+            #mDelta <- as.matrix(nearPD(mDelta)$mat)
+            #colnames(mDelta) <-rownames(mDelta)
             mu <- 0
             if(isTN){
                 mu <- p$mu
@@ -66,19 +62,16 @@ funcLogL <- function(parameters, quiet = F){
             vMu = rep(mu, n)
             r <- 0
             if (isSpV || isSpU){
-                v <- pmvnorm(lower=rep(-Inf, n),upper = 0, mean=-vMu, sigma=mOmega)
-                if (v<1e-200){
-                    stop("Log-likelihood function value can not be calculated due to precision limits")
+                f1 <- pmvnorm(lower=rep(-Inf, n),upper = 0, mean=-vMu, sigma=mSigmaU)
+                r <- -log(f1)
+                if (r == Inf){
+                    stop()
                 }
-                r <- -log(v)
-                #logging("1:",r)
-                r <- r + dmvnorm(x=as.vector(e),mean=vMu, sigma=mC,log=TRUE)
-                
-                #logging("2:",r)
-                r <- r + log(pmvnorm(lower=rep(-Inf, n),upper = as.vector(mOmega%*%imC%*%(e-vMu)), mean=-vMu, sigma=mB))
-                
-                #logging("3:",r)
+                r <- r + dmvnorm(x=as.vector(e),mean=-vMu, sigma=mSigma,log=TRUE)
+                f2 <- pmvnorm(lower=rep(-Inf, n),upper = as.vector(mGamma%*%(e+vMu)), mean=-vMu, sigma=mDelta)
+                r <- r + log(f2)
             }else{
+                r <- r - n*log(2*pi)/2
                 r <- r - n*log(pnorm(mu/sigmaU))
                 r <- r + n * log(p$nu) 
                 r <- r - 0.5 * p$nu^2*sum((e + vMu)^2)
@@ -93,7 +86,7 @@ funcLogL <- function(parameters, quiet = F){
     }else{
         if(!quiet) logging("Parameters are out of space")
     }
-    if(!quiet) logging(paste("funcLogL =",-ret,"\n"))
+    if(!quiet) logging(paste("funcLogL =",ret,"\n"))
     if (ret == -Inf || is.nan(ret)) ret<- Infin # For fake finite differences
     return(-ret)
 }
@@ -174,4 +167,60 @@ funcGradient<-function(parameters){
         names(grad) <- c(ns, "dMu")
     }
     return(-grad)
+}
+
+#' @title Calculation of the log likelihood function for the spatial stochastic frontier model
+#'
+#' @description
+#' \code{logLikelihood} returns a value of the log likelihood function 
+#' for the spatial stochastic frontier model
+#' 
+#' @details
+#' This function is exported from the package for testing and presentation purposes
+#' A list of arguments of the function exactly matches the corresponding list of the \code{\link{spfrontier}} function
+#' 
+#' 
+#' @param formula an object of class "\code{\link{formula}}"
+#' @param data data frame, containing the variables in the model
+#' @param W_y a spatial weight matrix for spatial lag of the dependent variable
+#' @param W_v a spatial weight matrix for spatial lag of the symmetric error term
+#' @param W_u a spatial weight matrix for spatial lag of the inefficiency error term
+#' @param values a  vector of log likelihood function parameters
+#' @param logging an optional level of logging. Possible values are 'quiet','warn','info','debug'. 
+#' By default set to quiet.
+#' @param inefficiency sets the distribution for inefficiency error component. Possible values are 'half-normal' (for half-normal distribution) and 'truncated' (for truncated normal distribution). 
+#' By default set to 'half-normal'.
+
+#' 
+#' @export
+logLikelihood <- function(formula, data,
+                       W_y = NULL, W_v = NULL,W_u = NULL,
+                       inefficiency = "half-normal",
+                       values,
+                       logging = c("quiet", "info", "debug")){
+    logging <- match.arg(logging)
+    con <- list(grid.beta0 = 1, grid.sigmaV = 1, grid.sigmaU = 1, grid.rhoY = 1, grid.rhoU = 10, grid.rhoV = 10, grid.mu = 1)
+    
+    initEnvir(W_y=W_y, W_v=W_v,W_u=W_u,inefficiency=inefficiency, logging=logging)
+    logging("Estimator started", level="info")
+
+    mf <- model.frame(formula, data)
+    y <- as.matrix(model.response(mf))
+    X <- as.matrix(mf[-1])
+    tm <- attr(mf, "terms")
+    intercept <- attr(tm, "intercept") == 1
+    if (intercept){
+        X <- cbind(Intercept=1L,X)
+    }
+    k <- ncol(X)
+    n <- length(y)
+    envirAssign("X", X)
+    envirAssign("y", y)
+    isSpY <- !is.null(W_y)
+    isSpV <- !is.null(W_v)
+    isSpU <- !is.null(W_u)
+    isTN <- (inefficiency == "truncated")
+    res <- funcLogL(paramsToVector(olsenReparam(paramsFromVector(values, k, isSpY, isSpV, isSpU, isTN, olsen=F))))
+    names(res)<-"Log-likelihood function"
+    return(-res)
 }

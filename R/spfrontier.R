@@ -39,20 +39,23 @@
 #' @references 
 #' Kumbhakar, S.C. and Lovell, C.A.K (2000), Stochastic Frontier Analysis, Cambridge University Press, U.K.
 #' @examples
-#' data( airports )
-#' W <- constructW(cbind(airports$lon, airports$lat),airports$ICAO_code)
 #' 
-#' formula <- log(PAX) ~ log(runways) + log(checkins) +log (gates)
-#' ols <- lm(formula , data=airports)
+#' data( airports )
+#' airports2011 <- subset(airports, Year==2011)
+#' W <- constructW(cbind(airports2011$longitude, airports2011$latitude),airports2011$ICAO)
+#' formula <- log(PAX) ~ log(Population100km) + log(Routes) + log(GDPpc)
+#
+#' ols <- lm(formula , data=airports2011)
 #' summary(ols )
 #' plot(density(stats::residuals(ols)))
 #' skewness(stats::residuals(ols))
 #' 
-#' model <- spfrontier(formula , data=airports)
-#' summary(model )
+#' # Takes >5 sec, see demo for more examples
+#' # model <- spfrontier(formula , data=airports2011)
+#' # summary(model )
 #' 
-#' model <- spfrontier(formula , data=airports, W_y=W)
-#' summary(model )
+#' # model <- spfrontier(formula , data=airports2011, W_y=W)
+#' # summary(model )
 #' 
 spfrontier <- function(formula, data,
                        W_y = NULL, W_v = NULL,W_u = NULL,
@@ -62,8 +65,9 @@ spfrontier <- function(formula, data,
                        control=NULL,
                        onlyCoef = F){
     #Validation of model parameters
+    start <- Sys.time()
     logging <- match.arg(logging)
-    con <- list(grid.beta0 = 1, grid.sigmaV = 1, grid.sigmaU = 1, grid.rhoY = 1, grid.rhoU = 10, grid.rhoV = 10, grid.mu = 1,
+    con <- list(grid.beta0 = 1, grid.sigmaV = 1, grid.sigmaU = 1, grid.rhoY = 1, grid.rhoU = 7, grid.rhoV = 7, grid.mu = 1,
                 optim.control = list())
     namc <- names(control)
     con[namc] <- control
@@ -197,7 +201,7 @@ spfrontier <- function(formula, data,
         })
     }
     }
-    logging("Done!")
+    logging(paste("Done! Elapsed time: ",Sys.time()-start))
     finalizeEnvir()
     
     return(estimates)
@@ -290,14 +294,14 @@ gridSearch <- function(params){
     if (!is.null(params$rhoY)){
         gridVal$rho = params$rhoY
     }
-    gridVal$sigmaV = c(params$sigmaV,seq(params$sigmaV-0.5*params$sigmaV, params$sigmaV+0.5*params$sigmaV, length.out = con$grid.sigmaV))
+    gridVal$sigmaV = c(params$sigmaV,seq(0.5*params$sigmaV, 3*params$sigmaV, length.out = con$grid.sigmaV))
     #gridVal$sigmaU = params$sigmaU
-    gridVal$sigmaU = c(params$sigmaU,seq(params$sigmaU-0.5*params$sigmaU, params$sigmaU+0.5*params$sigmaU, length.out = con$grid.sigmaU))
+    gridVal$sigmaU = c(params$sigmaU,seq(0.5*params$sigmaU, 3*params$sigmaU, length.out = con$grid.sigmaU))
     if (!is.null(params$rhoV)){
-        gridVal$rhoV = seq(-0.99, 0.99, length.out = con$grid.rhoV)
+        gridVal$rhoV = seq(-0.3, 0.3, length.out = con$grid.rhoV)
     }
     if (!is.null(params$rhoU)){
-        gridVal$rhoU = seq(-0.99, 0.99, length.out = con$grid.rhoU)
+        gridVal$rhoU = seq(-0.3, 0.3, length.out = con$grid.rhoU)
     }
     if (!is.null(params$mu)){
         gridVal$mu = seq(params$mu-3*params$sigmaV,params$mu + 3*params$sigmaV,length.out = con$grid.mu)
