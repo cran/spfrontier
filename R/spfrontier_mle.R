@@ -6,12 +6,14 @@ funcLogL <- function(parameters, quiet = F){
     W_y <- envirGet("W_y")
     W_v <- envirGet("W_v")
     W_u <- envirGet("W_u")
+    costFrontier <- envirGet("costFrontier")
     inefficiency <- envirGet("inefficiency")
     
     isSpY <- !is.null(W_y)
     isSpV <- !is.null(W_v)
     isSpU <- !is.null(W_u)
     isTN <- (inefficiency == "truncated")
+    costf <- ifelse(costFrontier, -1, 1)
           
     p <- paramsFromVector(parameters, k, isSpY, isSpV, isSpU, isTN)
     if(!quiet){
@@ -32,29 +34,9 @@ funcLogL <- function(parameters, quiet = F){
         if (isSpY){
             e <- e - p$rhoY * W_y %*% y
         }
-        
-        SpV <- I
-        SpU <- I
-        
         tryCatch({
-            if (isSpV)
-                SpV <- solve(I-p$rhoV*W_v)
-            if (isSpU)
-                SpU <- solve(I-p$rhoU*W_u)
-            
             sigmaV <- 1/(p$nu*sqrt(1+p$lambda^2))
             sigmaU <- p$lambda * sigmaV
-            
-            mSigmaV = sigmaV^2*SpV%*%t(SpV)
-            mSigmaU = sigmaU^2*SpU%*%t(SpU)
-            mSigma = mSigmaV + mSigmaU
-            imSigma <- solve(mSigma)
-            mDelta <- mSigmaU%*%imSigma%*%mSigmaV 
-            mGamma <- -mSigmaU%*%imSigma
-            rownames(mDelta) <- colnames(mDelta)
-            #Livehack for calculation precision
-            #mDelta <- as.matrix(nearPD(mDelta)$mat)
-            #colnames(mDelta) <-rownames(mDelta)
             mu <- 0
             if(isTN){
                 mu <- p$mu
@@ -62,33 +44,44 @@ funcLogL <- function(parameters, quiet = F){
             vMu = rep(mu, n)
             r <- 0
             if (isSpV || isSpU){
-                f1 <- pmvnorm(lower=rep(-Inf, n),upper = 0, mean=-vMu, sigma=mSigmaU)
+                SpV <- I
+                SpU <- I
+                if (isSpV)
+                    SpV <- solve(I-p$rhoV*W_v)
+                if (isSpU)
+                    SpU <- solve(I-p$rhoU*W_u)
+                mSigmaV = sigmaV^2*SpV%*%t(SpV)
+                mSigmaU = sigmaU^2*SpU%*%t(SpU)
+                mSigma = mSigmaV + mSigmaU
+                imSigma <- solve(mSigma)
+                mDelta <- mSigmaU%*%imSigma%*%mSigmaV 
+                mGamma <- -costf*mSigmaU%*%imSigma
+                rownames(mDelta) <- colnames(mDelta)
+                
+                f1 <- pmvnorm(lower=-Inf,upper = 0, mean=-vMu, sigma=mSigmaU)
                 r <- -log(f1)
-                if (r == Inf){
-                    stop()
-                }
-                r <- r + dmvnorm(x=as.vector(e),mean=-vMu, sigma=mSigma,log=TRUE)
-                f2 <- pmvnorm(lower=rep(-Inf, n),upper = as.vector(mGamma%*%(e+vMu)), mean=-vMu, sigma=mDelta)
+                r <- r + dmvnorm(x=as.vector(e),mean=-costf*vMu, sigma=mSigma,log=TRUE)
+                f2 <- pmvnorm(lower=-Inf,upper = as.vector(mGamma%*%(e+costf*vMu)), mean=-vMu, sigma=mDelta)
                 r <- r + log(f2)
             }else{
                 r <- r - n*log(2*pi)/2
                 r <- r - n*log(pnorm(mu/sigmaU))
                 r <- r + n * log(p$nu) 
-                r <- r - 0.5 * p$nu^2*sum((e + vMu)^2)
-                r <- r + sum(log(pnorm(mu*p$nu/p$lambda - p$lambda*e*p$nu)))
+                r <- r - 0.5 * p$nu^2*sum((e + costf*vMu)^2)
+                r <- r + sum(log(pnorm(mu*p$nu/p$lambda - costf*p$lambda*e*p$nu)))
             }
             if (isSpY)
                 r <- r + determinant(I-p$rhoY*W_y,logarithm = TRUE)$modulus
             ret <- r
         }, error = function(e){
-            logging(e$message, level="warn")
+            logging(e$message, level="debug")
         })
     }else{
         if(!quiet) logging("Parameters are out of space")
     }
-    if(!quiet) logging(paste("funcLogL =",ret,"\n"))
-    if (ret == -Inf || is.nan(ret)) ret<- Infin # For fake finite differences
-    return(-ret)
+    if(!quiet) logging(paste("LogL =",ret,"\n"))
+    #if (ret == -Inf || is.nan(ret)) ret<- Infin  For fake finite differences
+    return(as.numeric(ret))
 }
 
 funcLogL.direct <- function(parameters){
@@ -119,11 +112,13 @@ funcGradient<-function(parameters){
     W_v <- envirGet("W_v")
     W_u <- envirGet("W_u")
     inefficiency <- envirGet("inefficiency")
+    costFrontier <- envirGet("costFrontier")
     
     isSpY <- !is.null(W_y)
     isSpV <- !is.null(W_v)
     isSpU <- !is.null(W_u)
     isTN <- (inefficiency == "truncated")
+    costf <- ifelse(costFrontier, -1, 1)
     
     p <- paramsFromVector(parameters, k, isSpY, isSpV, isSpU, isTN)
     
@@ -136,7 +131,7 @@ funcGradient<-function(parameters){
         mu <- p$mu
     }
     omega <- p$nu * yst - X%*%p$gamma
-    a <- -omega * p$lambda + mu*p$nu/p$lambda
+    a <- -costf*omega * p$lambda + mu*p$nu/p$lambda
     delta <- dnorm(a)/pnorm(a)
     N <- length(y)
     
@@ -144,14 +139,14 @@ funcGradient<-function(parameters){
     a2 <- mu/sigmaU
     delta2 <- (dnorm(a2)/pnorm(a2))
     
-    dLdGamma <- t(omega+mu*p$nu)%*%X + t(delta)%*%X * p$lambda
-    dLdNu <- -t(omega+mu*p$nu)%*%(y+mu) - t(delta)%*%(y*p$lambda-mu/p$lambda) + N * 1/p$nu - N*delta2*a2/p$nu
-    dLdLambda <- -t(delta)%*%(omega+mu*p$nu/p$lambda^2)+N*delta2*mu*p$nu/(p$lambda^2*sqrt(1+p$lambda^2))
+    dLdGamma <- t(omega+costf*mu*p$nu)%*%X + costf*t(delta)%*%X * p$lambda
+    dLdNu <- -t(omega+costf*mu*p$nu)%*%(y+mu) - t(delta)%*%(costf*y*p$lambda-mu/p$lambda) + N * 1/p$nu - N*delta2*a2/p$nu
+    dLdLambda <- -t(delta)%*%(costf*omega+mu*p$nu/p$lambda^2)+N*delta2*mu*p$nu/(p$lambda^2*sqrt(1+p$lambda^2))
     grad = c(dLdGamma)
     names(grad) = paste("dGamma", seq(length(dLdGamma)), sep = "")
     if(isSpY){
         mat = solve(diag(N)-p$rhoY*W_y) %*% (-W_y)
-        dLdRhoY = p$nu*(t(omega)+p$lambda*t(delta))%*%W_y%*%y+sum(diag(mat))
+        dLdRhoY = p$nu*(t(omega)+costf*p$lambda*t(delta))%*%W_y%*%y+sum(diag(mat))
         ns <- names(grad)
         grad <- c(grad, dLdRhoY)
         names(grad) <- c(ns, "dRhoY")
@@ -160,13 +155,14 @@ funcGradient<-function(parameters){
     grad = c(grad, dLdNu,dLdLambda)
     names(grad) = c(ns, "dNu", "dLambda")
     if(isTN){
-        dLdMu <- -N*delta2/sigmaU - p$nu*sum(omega+mu*p$nu)+sum(delta)*p$nu/p$lambda
+        dLdMu <- -N*delta2/sigmaU - p$nu*sum(omega+costf*mu*p$nu)+sum(delta)*p$nu/p$lambda
         #dLdMu = -(mu - 1)
         ns <- names(grad)
         grad <- c(grad, dLdMu)
         names(grad) <- c(ns, "dMu")
     }
-    return(-grad)
+    logging("Gradient",grad)
+    return(grad)
 }
 
 #' @title Calculation of the log likelihood function for the spatial stochastic frontier model
@@ -190,6 +186,7 @@ funcGradient<-function(parameters){
 #' By default set to quiet.
 #' @param inefficiency sets the distribution for inefficiency error component. Possible values are 'half-normal' (for half-normal distribution) and 'truncated' (for truncated normal distribution). 
 #' By default set to 'half-normal'.
+#' @param costFrontier is designed for selection of cost or production frontier
 
 #' 
 #' @export
@@ -197,7 +194,7 @@ logLikelihood <- function(formula, data,
                        W_y = NULL, W_v = NULL,W_u = NULL,
                        inefficiency = "half-normal",
                        values,
-                       logging = c("quiet", "info", "debug")){
+                       logging = c("quiet", "info", "debug"), costFrontier=F){
     logging <- match.arg(logging)
     con <- list(grid.beta0 = 1, grid.sigmaV = 1, grid.sigmaU = 1, grid.rhoY = 1, grid.rhoU = 10, grid.rhoV = 10, grid.mu = 1)
     
@@ -216,11 +213,12 @@ logLikelihood <- function(formula, data,
     n <- length(y)
     envirAssign("X", X)
     envirAssign("y", y)
+    envirAssign("costFrontier", costFrontier)
     isSpY <- !is.null(W_y)
     isSpV <- !is.null(W_v)
     isSpU <- !is.null(W_u)
     isTN <- (inefficiency == "truncated")
     res <- funcLogL(paramsToVector(olsenReparam(paramsFromVector(values, k, isSpY, isSpV, isSpU, isTN, olsen=F))))
     names(res)<-"Log-likelihood function"
-    return(-res)
+    return(res)
 }

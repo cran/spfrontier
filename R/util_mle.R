@@ -15,14 +15,34 @@ optimEstimator <- function(formula, data, func.lf, ini,gr=NULL){
     }
     tryCatch({
         control <- envirGet("control")
-        p<-optim(par=ini,fn=func.lf,gr=gr,
-                 method="BFGS", control=control$optim.control,hessian = T)
+        constr <- envirGet("constr")
+        pscale <- envirGet("parscale")
+        st <- 0
+        stMax <- control$optim.control$repeatNM
+        if (is.null(stMax)) stMax <- 1
+        repeat{
+            st <- st + 1
+            p<-maxLik(func.lf, start=ini,grad=gr,constraints=constr,
+                 tol=control$optim.control$tol,
+                 #parscale=pscale,
+                 iterlim=control$optim.control$iterlim)
+            
+            if (!is.null(gr) || st==stMax){
+                break;
+            }else{
+                logging(p, level = "info")
+                logging(paste("Restarting Nelder-Mead: ", st), level = "info")
+                ini <- p$estimate
+            }
+        }
+        #p <- psoptim(par=NA, fn=func.lf, lower=c(-Inf, -Inf, -Inf, 0,0,-1), upper=c(Inf, Inf, Inf, Inf,Inf,1))
+        logging(summary(p), level = "debug")
         logging(paste("Convergence is",
-                      ifelse(p$convergence==0, "", "NOT"),"achieved",
-                      "[",p$convergence,"]"),
+                      ifelse(succcessCode(p)==0, "", "NOT"),"achieved",
+                      "[",p$code,"]"),
                 level = "info",
                 caller = match.call())    
-        logging(paste("Log-Likelihood value = ",p$value),
+        logging(paste("Log-Likelihood value = ",p$maximum),
                 level = "info",
                 caller = match.call())  
         ret <- prepareEstimates(estimates = p)
@@ -32,20 +52,27 @@ optimEstimator <- function(formula, data, func.lf, ini,gr=NULL){
     return(ret)
 }
 
+succcessCode <- function(p){
+    res <- p$code
+    if (p$type=="Newton-Raphson maximisation"){
+        if (res<3) res<-0
+    }
+    return(res)
+}
 #
 # Creates the ModelEstimates class on the base of raw (optim) estimation results
 #
 prepareEstimates <- function(estimates = NULL, status = 0){
     ret <- new("ModelEstimates", status = status)
     if (!is.null(estimates)) {
-        if (estimates$value == -Infin){
+        if (estimates$maximum == Infin){
             return(new("ModelEstimates", status = 1002))
         }
         ret <- new("ModelEstimates",
-                   resultParams = estimates$par,
-                   status = estimates$convergence,
-                   logL = -estimates$value,
-                   logLcalls = estimates$counts,
+                   resultParams = estimates$estimate,
+                   status = succcessCode(estimates),
+                   logL = estimates$maximum,
+                   logLcalls = estimates$iterations,
                    hessian = estimates$hessian
         )
         #Setting hessian and implicitly calculating standard errors

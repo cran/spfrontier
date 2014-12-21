@@ -1,98 +1,41 @@
 library(spdep)
+library(pastecs)
 library(car)
+library(maptools)
+library(maps)
+library(ggmap)
+library(corpcor)
 
 rm(list=ls())
 data(airports, envir = environment())
 
-########################
-#ALL 
 
-airports2011 <- subset(airports, Year==2011)
-data <- airports2011 
+airports$Country<-as.factor(airports$Country)
+airports$Routes <- airports$RoutesDeparture+airports$RoutesArrival
+vars <- c("ICAO", "Country", "AirportName", "longitude", "latitude","Year", "PAX", "ATM", "Cargo", "Population100km", "Population200km", "Island", 
+          "GDPpc","RunwayCount","CheckinCount","GateCount","ParkingSpaces", "RoutesDeparture", "RoutesArrival", "Routes")
+airportsEU <- airports[vars]
+
+airports2011 <- subset(airportsEU, Year==2011)
+airports2011.complete <- with(airports2011, airports2011[complete.cases(PAX,ATM,Cargo,Population100km,Population200km,Island, GDPpc, RoutesDeparture,RoutesArrival),])
+nrow(airports2011.complete)
+stat.desc(airports2011.complete)
+
+data <- airports2011.complete
 nrow(data)
 W <- constructW(cbind(data$longitude, data$latitude),data$ICAO)
 
-formula <- log(PAX) ~ log(Population100km) + log(Routes) + log(GDPpc) +Island
-formula <- log(PAX+0.0001) ~ log(Cargo/PAX+0.0001) + log(Population100km) + log(Routes) + log(GDPpc)
+formula <- log(PAX) ~ log(Population100km) + log(Routes) + log(GDPpc)
 
 
-##########################
-
-########################
-#SPAIN 
-
-airports2010.Spain <- subset(airports, Year==2010 & Country=="Spain")
-nrow(airports2010.Spain)
-airports2010.Spain.complete <- with(airports2010.Spain, airports2010.Spain[complete.cases(RevenueTotal,ATM,PAX,DA,StaffCost,TerminalCount,RunwayCount,Population100km,Routes,longitude,latitude),])
-data <- airports2010.Spain.complete 
-nrow(data)
-W <- constructW(cbind(data$longitude, data$latitude),data$ICAO)
-
-formula <- log(RevenueTotal) ~ log(ATM) + log(PAX) + log(DA) + log(StaffCost)+ log(TerminalCount)+ log(RunwayCount) + log(Population100km) + log(Routes)
-formula <- log(PAX+0.0001) ~ log(Routes) + log(TerminalCount) + log(RunwayCount)+ log(Population100km) + Island
-
-formula <- log(RevenueTotal) ~ log(ATM) + log(PAX) + log(StaffCost)+ log(TerminalCount)+ log(Population100km) + log(Routes)
-#Good!
-
-
-##########################
-
-########################
-#UK 
-
-airports2012.UK <- subset(airports, Year==2012 & Country=="United Kingdom")
-nrow(airports2012.UK)
-data <- airports2012.UK
-nrow(data)
-
-W <- constructW(cbind(data$longitude, data$latitude),data$ICAO)
-
-formula <- log(PAX+0.0001) ~ log(Routes) + log(Population100km) + Island
-
-
-##########################
-
-########################
-#Greece 
-
-rm(list=ls())
-data(airports.greece, envir = environment())
-data <- airports.greece
-
-
-W <- constructW(cbind(data$lon, data$lat),data$ICAO)
-
-formula <- log(WLU) ~ log(openning_hours) + log(runway_area) + log(terminal_area) + log(parking_area) + island + international
-#Good!
-
-formula <- log(WLU) ~ log(openning_hours) + log(terminal_area)
-
-##########################
-
-ols <- lm(formula , data=data)
-summary(ols )
-vif(ols)
-resid <- stats::residuals(ols)
-plot(density(resid))
-skewness(resid)
-
-listw <- mat2listw(W)
-
-moran.test(resid,listw,randomisation=FALSE,alternative="two.sided")
-lm.LMtests(ols, listw, test=c("LMerr","RLMerr","LMlag","RLMlag","SARMA"))
-
-summary(lagsarlm(formula ,data=data, listw))
-summary(errorsarlm(formula ,data=data, listw))
-
- 
 model000 <- spfrontier( formula , data=data)
 summary(model000 )
 
 model100 <- spfrontier(formula , data=data, W_y=W)
 summary(model100 )
 
-model010 <- spfrontier(formula , data=data, W_v=W, logging="debug",control=list())
+model010 <- spfrontier(formula , data=data, W_v=W, logging="debug")
 summary(model010)
 
-model001 <- spfrontier(formula , data=data, W_u=W, logging="debug",control=list())
+model001 <- spfrontier(formula , data=data, W_u=W, logging="debug")
 summary(model001)

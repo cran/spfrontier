@@ -38,8 +38,9 @@ spfrontier.dgp <- function(){
     formula <- as.formula("y ~ X1 + X2")
     beta<-c(.beta1,.beta2)
     k <- length(beta)
-    x <- runif(.n, 1,10)
-    X <- cbind(log(x), log(x)^2)
+    x1 <- runif(.n, 1,10)
+    x2 <- runif(.n, 1,10)
+    X <- cbind(log(x1), log(x2))
     #X <- matrix(rnorm(.n*k,0,.sigmaX),.n, k)
     
     
@@ -65,6 +66,9 @@ spfrontier.dgp <- function(){
         SpW3 <- solve(diag(.n)-.rhoU*W_u)
     }
     u <- SpW3%*%rtmvnorm(1,mean = rep(muval, .n),sigma = .sigmaU^2*diag(.n),algorithm="gibbs", lower=rep(0, .n))[1,]
+    #u <- rtmvnorm(1,mean = rep(muval, .n),sigma = .sigmaU^2*SpW3*t(SpW3),algorithm="gibbs", lower=rep(0, .n))[1,]
+    #u <- SpW3%*%abs(rnorm(.n, mean = muval, sd = .sigmaU))
+    
     #if (!is.null(.rhoU)){
     #   print(coef(lm(u~Wu-1, data=data.frame(u, Wu = W_u%*%u))))
     #}
@@ -96,7 +100,10 @@ spfrontier.dgp <- function(){
     if (!is.null(.control$ignoreWy) && .control$ignoreWy) W_y <- NULL
     if (!is.null(.control$ignoreWv) && .control$ignoreWv) W_v <- NULL
     if (!is.null(.control$ignoreWu) && .control$ignoreWu) W_u <- NULL
-    result <- list(formula=formula, data=dat,W_y=W_y,W_v=W_v,W_u=W_u, tv=tv,y=y, x=x,
+    m <- round(runif(1)*1000)
+    print(paste("Mark = ",m))
+    save(W_y, W_u, W_v, data,formula, file=paste("test",Sys.getpid(),"-",m,".rData",sep=""))
+    result <- list(formula=formula, data=dat,W_y=W_y,W_v=W_v,W_u=W_u, tv=tv,y=y, X=X,
                    loggingLevel=.loggingLevel,inefficiency=.inefficiency,control=.control)
     return(result)
 }
@@ -117,7 +124,7 @@ spfrontier.estimator <- function(d){
                         values=d$tv)
     message("Log-likelihood (true DGP) (pid=",Sys.getpid(),") = ", logl)
     if (!is.null(d$control) && d$control$true.initial){
-        message("Using true values as initial:", (logl>Infin))
+        message("Using true values as initial (pid=",Sys.getpid(),"):", (logl>Infin))
         if(logl>Infin){
             initialValues <- d$tv
         }
@@ -264,13 +271,14 @@ ezsimspfrontier <- function(runs,
                             logging = "info",
                             control = list()){
     start <- Sys.time()
-    con <- list(auto_save=0,seed = NULL,ignoreWy=F,ignoreWv=F,ignoreWu=F, cores = detectCores()-1, outfile="spfrontier_simulations.log",true.initial=F)
+    con <- list(auto_save=0,seed = NULL,ignoreWy=F,ignoreWv=F,ignoreWu=F,replaceWyWu=F,replaceWyWv=F, cores = detectCores()-1, outfile="spfrontier_simulations.log",true.initial=F)
     nmsC <- names(con)
     con[(namc <- names(control))] <- control
     if (length(noNms <- namc[!namc %in% nmsC])) 
         warning("unknown names in control: ", paste(noNms, collapse = ", "))
     
-    rm(list = ls(envir=.spfrontierEnv), envir=.spfrontierEnv)
+    #rm(list = ls(envir=.SpfrontierEnv), envir=.SpfrontierEnv)
+    .SpfrontierEnv <- new.env(hash = TRUE)
     
     parDef <- createParDef(selection = params, banker = list(loggingLevel=logging,inefficiency=inefficiency,control=con,parDef=createParDef(selection = params, banker=list(control=con))))
     if (!is.null(con$seed)) {
@@ -284,6 +292,7 @@ ezsimspfrontier <- function(runs,
         clusterApply(cl, 1:con$cores, function(x) {
             set.seed(con$seed+x)
             message("Predefined seed: ", con$seed+x)
+            #devtools::load_all(".")
             require(spfrontier)
         })
     }

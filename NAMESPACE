@@ -6,9 +6,10 @@ importFrom("stats", optim,coefficients, fitted, residuals)
 importFrom("tmvtnorm", ptmvnorm, mtmvnorm, rtmvnorm)
 importFrom("mvtnorm", dmvnorm, pmvnorm, rmvnorm)
 importFrom("moments", skewness)
-importFrom("ezsim", ezsim, createParDef,createSimulationTable)
-importFrom("Matrix", nearPD)
+importFrom("ezsim", ezsim, createParDef,createSimulationTable,evalFunctionOnParameterDef)
 importFrom("parallel", detectCores, clusterApply, makeCluster, stopCluster)
+importFrom("spdep", errorsarlm,mat2listw)
+importFrom("maxLik", maxLik)
 
 #
 # Exports

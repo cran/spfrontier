@@ -30,6 +30,7 @@
 #' @param inefficiency sets the distribution for inefficiency error component. Possible values are 'half-normal' (for half-normal distribution) and 'truncated' (for truncated normal distribution). 
 #' By default set to 'half-normal'. See references for explanations
 #' @param onlyCoef allows calculating only estimates for coefficients (with inefficiencies and other additional statistics). Developed generally for testing, to speed up the process.
+#' @param costFrontier is designed for selection of cost or production frontier
 #' @param control an optional list of control parameters, 
 #' passed to \code{\link{optim}} estimator from the '\code{\link{stats}} package
 #' 
@@ -60,15 +61,17 @@
 spfrontier <- function(formula, data,
                        W_y = NULL, W_v = NULL,W_u = NULL,
                        inefficiency = "half-normal",
-                       initialValues=NULL,
+                       initialValues="errorsarlm",
                        logging = c("quiet", "info", "debug"),
                        control=NULL,
-                       onlyCoef = F){
+                       onlyCoef = F,
+                       costFrontier = F){
     #Validation of model parameters
     start <- Sys.time()
     logging <- match.arg(logging)
+    if (is.null(initialValues)) initialValues<-"errorsarlm"
     con <- list(grid.beta0 = 1, grid.sigmaV = 1, grid.sigmaU = 1, grid.rhoY = 1, grid.rhoU = 7, grid.rhoV = 7, grid.mu = 1,
-                optim.control = list())
+                optim.control = list(tol=1e-5, iterlim=2000,repeatNM=1))
     namc <- names(control)
     con[namc] <- control
     noNms <- namc[!namc %in% names(con)]
@@ -78,7 +81,7 @@ spfrontier <- function(formula, data,
     #End of model parameters' validation 
     
     initEnvir(W_y=W_y, W_v=W_v,W_u=W_u,inefficiency=inefficiency,
-              initialValues=initialValues,logging=logging,control=con)
+              initialValues=initialValues,logging=logging,costFrontier=costFrontier,control=con)
     logging("Estimator started", level="info")
     
     #Preparing the environment
@@ -98,14 +101,15 @@ spfrontier <- function(formula, data,
     isSpV <- !is.null(W_v)
     isSpU <- !is.null(W_u)
     isTN <- (inefficiency == "truncated")
+    costf <- ifelse(costFrontier, -1, 1)
     if ((isSpV || isSpU) &&(logging!="debug")){
-        cat("MLE can take a long time for spatial lags in error components. This is recommended to use logging='debug' to control the progress")
+        logging("MLE can take a long time for spatial lags in error components. This is recommended to use logging='debug' to control the progress", level="info")
     }
     #if(!is.null(tv)){
     #    logging("logL at true value:", funcLogL.direct(tv))
     #}
     
-    if (is.null(initialValues)){
+    if (typeof(initialValues)!="double"){
         logging("Calculating initial values",level="info")
         iniParams <- calculateInitialValues(formula, data)
         initialValues <- paramsToVector(olsenReparam(iniParams))
@@ -116,6 +120,51 @@ spfrontier <- function(formula, data,
     grad <- NULL
     if (!isSpV && !isSpU){
         grad <- funcGradient
+    }
+    constr <- NULL
+    if (isSpY || isSpV || isSpU){
+        num <- 0
+        if (isSpY) num <- num + 1
+        if (isSpV) num <- num + 1
+        if (isSpU) num <- num + 1
+        vars <- k+num+2
+        cons <- num*2 + 2
+        if (isTN) vars <- vars + 1
+        
+        pscale <- rep(1, vars)
+        A <- matrix(rep(0, vars*cons), ncol=vars,nrow=cons)
+        B <- rep(0, cons)
+        fr <- k
+        if (isSpY) fr <- fr+1
+        A[1,fr+1] <- 1
+        A[2,fr+2] <- 1
+        l <- 2
+        if (isSpY){
+            A[l+1,fr] <- -1
+            A[l+2,fr]<- 1
+            B[l+1] <- 1
+            B[l+2] <- 1
+            l <- l+2
+        }
+        if (isSpV){
+            A[l+1,fr+3] <- -1
+            A[l+2,fr+3]<- 1
+            B[l+1] <- 1
+            B[l+2] <- 1
+            pscale[fr+3] <- n
+            l <- l+2
+            fr <- fr + 1
+        }
+        if (isSpU){
+            A[l+1,fr+3] <- -1
+            A[l+2,fr+3]<- 1
+            pscale[fr+3] <- n
+            B[l+1] <- 1
+            B[l+2] <- 1
+        }
+        constr <- list(ineqA=A, ineqB=B)
+        envirAssign("constr",constr)
+        envirAssign("parscale",pscale)
     }
     estimates <- optimEstimator(formula, data, 
                                 funcLogL, 
@@ -146,12 +195,14 @@ spfrontier <- function(formula, data,
         residuals(estimates) <- resid
     
         tryCatch({
+            #logging("Calculating hessian")
+            #hessian(estimates) <- numDeriv::hessian(funcLogL,x=resultParams(estimates))
             logging("Calculating stdErrors...")
             #hess <- optimHess(paramsToVector(p, olsen = F),funcLogL.direct)
             #hessian(estimates) <- hess
             
             G <- olsenGradient(olsenP)
-            iH <- solve(hessian(estimates))
+            iH <- solve(-hessian(estimates))
             stdErrors(estimates) <- sqrt(diag(G%*%iH%*%t(G)))
             logging("Done")
         }, error = function(e){
@@ -159,9 +210,14 @@ spfrontier <- function(formula, data,
         })
         tryCatch({
             logging("Calculating efficiencies...")
+            mu <- 0
+            if(isTN){
+                mu <- p$mu
+            }
             if (is.null(p$rhoV) && is.null(p$rhoU) ){
                 sigma <- sqrt(p$sigmaU^2 + p$sigmaV^2)
-                A <- resid * (p$sigmaU / p$sigmaV) / sigma
+                lambda <- p$sigmaU / p$sigmaV
+                A <- costf*resid * lambda / sigma - mu / (lambda * sigma)
                 u <- (dnorm(A) / (1 - pnorm(A)) - A) * p$sigmaU * p$sigmaV / sigma
             }else{
                 I <- diag(n)
@@ -173,24 +229,20 @@ spfrontier <- function(formula, data,
                 if (!is.null(p$rhoU))
                     SpU <- solve(I-p$rhoU*W_u)
                 
-                mSigma = p$sigmaV^2*SpV%*%t(SpV)
-                mOmega = p$sigmaU^2*SpU%*%t(SpU)
-                mC = mSigma + mOmega
-                imC <- solve(mC)
-                mB = mOmega%*%imC%*%mSigma 
+                mSigmaV = p$sigmaV^2*SpV%*%t(SpV)
+                mSigmaU = p$sigmaU^2*SpU%*%t(SpU)
+                mSigma = mSigmaV + mSigmaU
+                imSigma <- solve(mSigma)
+                mDelta = mSigmaU%*%imSigma%*%mSigmaV 
+                rownames(mDelta) <- colnames(mDelta)
                 
-                #Livehack for calculation precision
-                rownames(mB) <- colnames(mB)
-                mB <- as.matrix(nearPD(mB)$mat)
+                mA = mDelta %*% solve(mSigmaV)
+                mD = -mDelta %*% solve(mSigmaU)
                 
-                mA = mB %*% solve(mSigma)
-                mD = -mB %*% solve(mOmega)
-                mu <- 0
-                if(isTN){
-                    mu <- p$mu
-                }
                 vMu = rep(mu, n)
-                u <- mtmvnorm(lower= rep(0, n),mean=as.vector(t(-mA%*%resid-mD%*%vMu)), sigma=mB, doComputeVariance=FALSE)$tmean
+                mGamma <- -costf*mSigmaU%*%imSigma
+                m <- vMu + mGamma %*% (resid + costf*vMu)
+                u <- mtmvnorm(lower= rep(0, n),mean=as.vector(t(m)), sigma=mDelta, doComputeVariance=FALSE)$tmean
             }
             eff <- cbind(exp(-u))
             rownames(eff) <- rownames(y)
@@ -214,7 +266,10 @@ calculateInitialValues <- function (formula, data) {
     W_y <- envirGet("W_y")
     W_v <- envirGet("W_v")
     W_u <- envirGet("W_u")
+    costFrontier <- envirGet("costFrontier")
     inefficiency <- envirGet("inefficiency")
+    initialValues <- envirGet("initialValues")
+    logging(paste("Initial values method",initialValues),level="info")
     isSpY <- !is.null(W_y)
     isSpV <- !is.null(W_v)
     isSpU <- !is.null(W_u)
@@ -229,7 +284,7 @@ calculateInitialValues <- function (formula, data) {
     found <- F
     if (isSpY){
         iniParams$rhoY <- 0
-        inconsistentSpatial <- spfrontier(f, data, logging="quiet",onlyCoef=F)
+        inconsistentSpatial <- spfrontier(f, data, logging="quiet",onlyCoef=F,costFrontier=costFrontier)
         coef <- coefficients(inconsistentSpatial)
         if (length(coef)>0){
             iniParams$rhoY = tail(coef$beta, n=1)
@@ -255,19 +310,36 @@ calculateInitialValues <- function (formula, data) {
     
     mu <- -mean(e) 
     
-    if (isSpV){
-        We <- W_v %*% e
-        sarResiduals <- lm(e ~ We - 1, data = data.frame(e, We))
-        iniParams$rhoV <- coef(sarResiduals)
-        mu <- -mean(stats::residuals(sarResiduals))
+    if (is.null(initialValues) || initialValues == "nonspatial"){
+        if (isSpV){
+            iniParams$rhoV <- 0
+        }
+        if (isSpU){
+            iniParams$rhoU <- 0
+        }
     }
-    if (isSpU){
-        iniParams$rhoU <- 0
+    if (!is.null(initialValues)&&initialValues == "errorsarlm"){
+        if (isSpV){
+            listw <- mat2listw(W_v)
+            sem <- errorsarlm(f ,data=data, listw)
+            logging(paste("SEM lambda for W_v",sem$lambda),level="debug")
+            iniParams$rhoV <- sem$lambda
+            #We <- W_v %*% e
+            #sarResiduals <- lm(e ~ We - 1, data = data.frame(e, We))
+            #iniParams$rhoV <- coef(sarResiduals)
+            #mu <- -mean(stats::residuals(sarResiduals))
+        }
+        if (isSpU){
+            listw <- mat2listw(W_u)
+            sem <- errorsarlm(f ,data=data, listw)
+            logging(paste("SEM lambda for W_u",sem$lambda),level="debug")
+            iniParams$rhoU <- sem$lambda
+        }
     }
     if(isTN){
         iniParams$mu <- mu
     }
-    if (isSpU || isSpV){
+    if (!is.null(initialValues)  && initialValues=="grid" &&(isSpU || isSpV)){
         iniParams <- gridSearch(iniParams)
     }
     initialValues <- iniParams
