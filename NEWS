@@ -1,7 +1,13 @@
+Version 0.2.01 (2016-05-23)
+------------------------------------------------------------------------------
+
+* migrated to "optimx"
+* updated calculation precision for better convergence
+
 Version 0.1.12 (2014-12-21)
 ------------------------------------------------------------------------------
 
-Fix a number of critical bugs in the optimisation algorthm
+Fix a number of critical bugs in the optimisation algorithm
 
 
 Version 0.1.1 (2014-03-21)

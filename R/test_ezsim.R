@@ -131,7 +131,7 @@ spfrontier.estimator <- function(d){
     }
     modelEstimates <- spfrontier(d$formula,d$data,W_y=d$W_y,W_v=d$W_v,W_u=d$W_u,
                                  logging = d$loggingLevel,inefficiency=d$inefficiency,onlyCoef=T,
-                                 control=list(),initialValues=initialValues)
+                                 control=list(reltol=1e-3),initialValues=initialValues)
     if (status(modelEstimates) > 0){ 
         fake = rep(1000,length(d$tv))
         names(fake) <- names(d$tv)

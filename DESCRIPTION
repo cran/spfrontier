@@ -1,19 +1,21 @@
 Package: spfrontier
 Type: Package
-Title: Spatial Stochastic Frontier models estimation
-Version: 0.1.12
-Date: 2014-12-21
+Title: Spatial Stochastic Frontier Models
+Version: 0.2.3
+Date: 2016-05-26
 Author: Dmitry Pavlyuk <Dmitry.V.Pavlyuk@gmail.com>
 Maintainer: Dmitry Pavlyuk <Dmitry.V.Pavlyuk@gmail.com>
-Description: A set of tools for estimation of various spatial specifications of stochastic frontier models
+Description: A set of tools for estimation of various spatial specifications of
+    stochastic frontier models.
 License: GPL (>= 2)
-Depends: R (>= 3.0),moments,ezsim,tmvtnorm,mvtnorm,maxLik
-Imports: methods, parallel,spdep
+Depends: R (>= 3.0),moments,tmvtnorm,mvtnorm,spdep,ezsim
+Imports: methods,parallel,optimx,numDeriv
 ZipData: no
+RoxygenNote: 5.0.1
 Repository: CRAN
 Repository/R-Forge/Project: spfrontier
-Repository/R-Forge/Revision: 45
-Repository/R-Forge/DateTimeStamp: 2014-12-21 16:00:12
-Date/Publication: 2014-12-21 18:05:06
-Packaged: 2014-12-21 16:05:11 UTC; rforge
+Repository/R-Forge/Revision: 51
+Repository/R-Forge/DateTimeStamp: 2016-05-26 17:58:16
+Date/Publication: 2016-05-26 22:05:03
 NeedsCompilation: no
+Packaged: 2016-05-26 18:05:10 UTC; rforge

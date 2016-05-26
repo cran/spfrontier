@@ -4,6 +4,7 @@
 # Definitions of S4 classes and methods
 #
 
+setClassUnion("matrixOrNULL", c("matrix", "NULL"))
 
 #' @title Model Estimation Results
 #'
@@ -17,9 +18,9 @@
 #' @slot resultParams raw estimated values
 #' @slot status model estimation status:\cr
 #' 0 - Success\cr
-#' 1 - Failed; convergence is not archieved\cr
+#' 1 - Failed; convergence is not achieved\cr
 #' 1000 - Failed; unexpected exception\cr
-#' 1001 - Failed; Initial values for MLe can not be estimated\cr
+#' 1001 - Failed; Initial values for MLE cannot be estimated\cr
 #' 1002 - Failed; Maximum likelihood function is infinite\cr
 #' 
 #' @slot logL value of the log-likelihood function
@@ -40,7 +41,7 @@ setClass("ModelEstimates",
              status = "numeric", 
              logL = "numeric", 
              logLcalls = "vector", 
-             hessian = "matrix", 
+             hessian = "matrixOrNULL", 
              stdErrors = "vector", 
              residuals = "matrix", 
              fitted = "matrix", 
@@ -244,21 +245,28 @@ setMethod("summary", signature=signature(object='ModelEstimates'),
                   cat("Estimates:\n")
                   coef <- coefficients(object)
                   coef <- c(coef$beta,coef$rhoY, coef$sigmaV, coef$sigmaU, coef$rhoV, coef$rhoU, coef$mu)
+                  digits <- max(5, .Options$digits - 3)
+                  if (length(object@stdErrors)>0){
                   zval <- coef/object@stdErrors
                   pval <- 2*(1-pnorm(abs(zval)))
-                  digits <- max(5, .Options$digits - 3)
                   e <- cbind(format(signif(coef,digits=digits)), 
                              format(signif(object@stdErrors,digits=digits)), 
                              format(signif(zval,digits=digits)),
                              format.pval(pval,digits=digits),
                              sapply(pval,pvalMark))
-                  rownames(e) <- names(coef)
                   colnames(e) <- c("Estimate","Std. Error", "z value", "Pr(>|z|)","")
+                  } else{
+                      e <- cbind(format(signif(coef,digits=digits)))
+                      colnames(e) <- c("Estimate")
+                      warning("Estimates' standard errors was not calculated")
+                  }
+                  rownames(e) <- names(coef)
                   print(e,quote = FALSE)
                   cat("---\n")
                   cat("Signif. codes:    0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1\n")
                   cat("Log-likelihood function value: ", object@logL,"\n")
-                  cat("Log-likelihood function/gradient calls: ", unlist(object@logLcalls),"\n")
+                  cat("AIC: ", 2*length(coef) - 2*object@logL,"\n")
+                  cat("Log-likelihood function calls: ", unlist(object@logLcalls),"\n")
               }
           }
 )

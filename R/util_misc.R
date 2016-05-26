@@ -90,6 +90,9 @@ olsenReparamBack = function(par){
     names(par$beta) <- colnames(X)
     names(par$sigmaV) <- c("sigmaV")
     names(par$sigmaU) <- c("sigmaU")
+    if (!is.null(par$rhoY)) names(par$rhoY) <- c("rhoY")
+    if (!is.null(par$rhoV)) names(par$rhoV) <- c("rhoV")
+    if (!is.null(par$rhoU)) names(par$rhoU) <- c("rhoU")
     return(par)
 }
 

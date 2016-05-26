@@ -2,14 +2,17 @@
 # Imports
 #
 import(methods)
-importFrom("stats", optim,coefficients, fitted, residuals)
+importFrom("stats", optim,coefficients,coef,fitted, residuals,pnorm,dnorm,rnorm,quantile,lm,var,dist,model.frame,model.response,runif,as.formula,density,update)
+importFrom("utils", flush.console,head,tail,data)
+importFrom("graphics", plot)
 importFrom("tmvtnorm", ptmvnorm, mtmvnorm, rtmvnorm)
-importFrom("mvtnorm", dmvnorm, pmvnorm, rmvnorm)
+importFrom("mvtnorm", dmvnorm, pmvnorm, rmvnorm,GenzBretz)
 importFrom("moments", skewness)
 importFrom("ezsim", ezsim, createParDef,createSimulationTable,evalFunctionOnParameterDef)
 importFrom("parallel", detectCores, clusterApply, makeCluster, stopCluster)
 importFrom("spdep", errorsarlm,mat2listw)
-importFrom("maxLik", maxLik)
+importFrom("optimx", optimx)
+importFrom("numDeriv", hessian)
 
 #
 # Exports

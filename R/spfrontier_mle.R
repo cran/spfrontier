@@ -1,5 +1,8 @@
-Infin <- -1e16
+Infin <- 1e16
 funcLogL <- function(parameters, quiet = F){
+    st <- Sys.time()
+    alg <- GenzBretz(abseps = 1e-200)
+    #logging("Algorithm: GenzBretz(maxpts = 1e5, abseps = 1e-12)")
     y <- envirGet("y")
     X <- envirGet("X")
     k <- ncol(X)
@@ -58,10 +61,10 @@ funcLogL <- function(parameters, quiet = F){
                 mGamma <- -costf*mSigmaU%*%imSigma
                 rownames(mDelta) <- colnames(mDelta)
                 
-                f1 <- pmvnorm(lower=-Inf,upper = 0, mean=-vMu, sigma=mSigmaU)
+                f1 <- pmvnorm(lower=-Inf,upper = 0, mean=-vMu, sigma=mSigmaU, algorithm=alg)
                 r <- -log(f1)
                 r <- r + dmvnorm(x=as.vector(e),mean=-costf*vMu, sigma=mSigma,log=TRUE)
-                f2 <- pmvnorm(lower=-Inf,upper = as.vector(mGamma%*%(e+costf*vMu)), mean=-vMu, sigma=mDelta)
+                f2 <- pmvnorm(lower=-Inf,upper = as.vector(mGamma%*%(e+costf*vMu)), mean=-vMu, sigma=mDelta, algorithm=alg)
                 r <- r + log(f2)
             }else{
                 r <- r - n*log(2*pi)/2
@@ -79,8 +82,9 @@ funcLogL <- function(parameters, quiet = F){
     }else{
         if(!quiet) logging("Parameters are out of space")
     }
-    if(!quiet) logging(paste("LogL =",ret,"\n"))
-    #if (ret == -Inf || is.nan(ret)) ret<- Infin  For fake finite differences
+    if(!quiet) logging(paste("LogL =",ret))
+    if (ret == -Inf || is.nan(ret)) ret<- -Infin  #For fake finite differences
+    logging(paste("Elapsed time: ",Sys.time()-st,"\n"))
     return(as.numeric(ret))
 }
 
@@ -132,7 +136,8 @@ funcGradient<-function(parameters){
     }
     omega <- p$nu * yst - X%*%p$gamma
     a <- -costf*omega * p$lambda + mu*p$nu/p$lambda
-    delta <- dnorm(a)/pnorm(a)
+    delta <- exp(dnorm(a, log=T)-pnorm(a, log.p=T))
+    #delta <- dnorm(a)/pnorm(a)
     N <- length(y)
     
     sigmaU <- p$lambda/(p$nu*sqrt(1+p$lambda^2))
@@ -145,10 +150,13 @@ funcGradient<-function(parameters){
     grad = c(dLdGamma)
     names(grad) = paste("dGamma", seq(length(dLdGamma)), sep = "")
     if(isSpY){
-        mat = solve(diag(N)-p$rhoY*W_y) %*% (-W_y)
-        dLdRhoY = p$nu*(t(omega)+costf*p$lambda*t(delta))%*%W_y%*%y+sum(diag(mat))
+        dLdRhoY <- NaN
+        try({
+            mat = solve(diag(N)-p$rhoY*W_y) %*% (-W_y)
+            dLdRhoY = p$nu*(t(omega)+costf*p$lambda*t(delta))%*%W_y%*%y+sum(diag(mat))
+        })
         ns <- names(grad)
-        grad <- c(grad, dLdRhoY)
+        grad <- c(grad, ifelse(is.nan(dLdRhoY),0,dLdRhoY))
         names(grad) <- c(ns, "dRhoY")
     }
     ns <- names(grad)
@@ -162,6 +170,9 @@ funcGradient<-function(parameters){
         names(grad) <- c(ns, "dMu")
     }
     logging("Gradient",grad)
+    if (any(is.na(grad))) {
+        grad <- NULL
+    }
     return(grad)
 }
 

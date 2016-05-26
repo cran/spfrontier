@@ -70,8 +70,8 @@ spfrontier <- function(formula, data,
     start <- Sys.time()
     logging <- match.arg(logging)
     if (is.null(initialValues)) initialValues<-"errorsarlm"
-    con <- list(grid.beta0 = 1, grid.sigmaV = 1, grid.sigmaU = 1, grid.rhoY = 1, grid.rhoU = 7, grid.rhoV = 7, grid.mu = 1,
-                optim.control = list(tol=1e-5, iterlim=2000,repeatNM=1))
+    con <- list(grid.beta0 = 1, grid.sigmaV = 1, grid.sigmaU = 1, grid.rhoY = 1, grid.rhoU = 7, grid.rhoV = 7, grid.mu = 1,hessian="numeric",
+                optim.control = list(maxit=1000,reltol=1e-3))
     namc <- names(control)
     con[namc] <- control
     noNms <- namc[!namc %in% names(con)]
@@ -122,6 +122,8 @@ spfrontier <- function(formula, data,
         grad <- funcGradient
     }
     constr <- NULL
+    lowerBounds <- NULL
+    upperBounds <- NULL
     if (isSpY || isSpV || isSpU){
         num <- 0
         if (isSpY) num <- num + 1
@@ -131,11 +133,22 @@ spfrontier <- function(formula, data,
         cons <- num*2 + 2
         if (isTN) vars <- vars + 1
         
+        lowerBounds <- rep(-Inf, vars)
+        upperBounds <- rep(Inf, vars)
+        lim <- 1
+        
         pscale <- rep(1, vars)
         A <- matrix(rep(0, vars*cons), ncol=vars,nrow=cons)
         B <- rep(0, cons)
         fr <- k
         if (isSpY) fr <- fr+1
+        
+        lowerBounds[fr] <- -lim
+        upperBounds[fr] <- lim
+        #lowerBounds[fr+1] <- 0
+        #lowerBounds[fr+2] <- 0
+        
+        
         A[1,fr+1] <- 1
         A[2,fr+2] <- 1
         l <- 2
@@ -153,6 +166,8 @@ spfrontier <- function(formula, data,
             B[l+2] <- 1
             pscale[fr+3] <- n
             l <- l+2
+            lowerBounds[fr+3] <- -lim
+            upperBounds[fr+3] <- lim
             fr <- fr + 1
         }
         if (isSpU){
@@ -161,9 +176,13 @@ spfrontier <- function(formula, data,
             pscale[fr+3] <- n
             B[l+1] <- 1
             B[l+2] <- 1
+            lowerBounds[fr+3] <- -lim
+            upperBounds[fr+3] <- lim
         }
-        constr <- list(ineqA=A, ineqB=B)
-        envirAssign("constr",constr)
+        #constr <- list(ineqA=A, ineqB=B)
+        #envirAssign("constr",constr)
+        envirAssign("lowerBounds",lowerBounds)
+        envirAssign("upperBounds",upperBounds)
         envirAssign("parscale",pscale)
     }
     estimates <- optimEstimator(formula, data, 
@@ -195,18 +214,15 @@ spfrontier <- function(formula, data,
         residuals(estimates) <- resid
     
         tryCatch({
-            #logging("Calculating hessian")
-            #hessian(estimates) <- numDeriv::hessian(funcLogL,x=resultParams(estimates))
-            logging("Calculating stdErrors...")
-            #hess <- optimHess(paramsToVector(p, olsen = F),funcLogL.direct)
-            #hessian(estimates) <- hess
-            
-            G <- olsenGradient(olsenP)
-            iH <- solve(-hessian(estimates))
-            stdErrors(estimates) <- sqrt(diag(G%*%iH%*%t(G)))
-            logging("Done")
+            if (!is.null(hessian(estimates))){
+                logging("Calculating stdErrors...")
+                G <- olsenGradient(olsenP)
+                iH <- solve(-hessian(estimates))
+                stdErrors(estimates) <- sqrt(diag(G%*%iH%*%t(G)))
+                logging("Done")
+            }
         }, error = function(e){
-            logging(e$message, level="warn")
+            logging(paste("Calculating stdErrors ", e$message), level="warn")
         })
         tryCatch({
             logging("Calculating efficiencies...")
@@ -242,7 +258,8 @@ spfrontier <- function(formula, data,
                 vMu = rep(mu, n)
                 mGamma <- -costf*mSigmaU%*%imSigma
                 m <- vMu + mGamma %*% (resid + costf*vMu)
-                u <- mtmvnorm(lower= rep(0, n),mean=as.vector(t(m)), sigma=mDelta, doComputeVariance=FALSE)$tmean
+                alg <- GenzBretz(abseps = 1e-200)
+                u <- mtmvnorm(lower= rep(0, n),mean=as.vector(t(m)), sigma=mDelta, doComputeVariance=FALSE, pmvnorm.algorithm=alg)$tmean
             }
             eff <- cbind(exp(-u))
             rownames(eff) <- rownames(y)
