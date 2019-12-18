@@ -102,7 +102,7 @@ spfrontier.dgp <- function(){
     if (!is.null(.control$ignoreWu) && .control$ignoreWu) W_u <- NULL
     m <- round(runif(1)*1000)
     print(paste("Mark = ",m))
-    save(W_y, W_u, W_v, data,formula, file=paste("test",Sys.getpid(),"-",m,".rData",sep=""))
+    #save(W_y, W_u, W_v, data,formula, file=paste("test",Sys.getpid(),"-",m,".rData",sep=""))
     result <- list(formula=formula, data=dat,W_y=W_y,W_v=W_v,W_u=W_u, tv=tv,y=y, X=X,
                    loggingLevel=.loggingLevel,inefficiency=.inefficiency,control=.control)
     return(result)
@@ -246,7 +246,6 @@ spfrontier.true.value <- function(){
 #' seed  - a state for random number generation in R. If NULL (default), the initial state is random. See \code{\link{set.seed}} for details.
 #' auto_save  - saves intermediate results to files. See \code{\link{ezsim}} for details.
 #' 
-#' @keywords spatial stochastic frontier, simulation
 #' @export
 #' @seealso 
 #' \code{\link{ezsim}}

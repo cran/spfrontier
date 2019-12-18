@@ -16,4 +16,3 @@ Dmitry Pavlyuk \email{Dmitry.V.Pavlyuk@gmail.com}
 \keyword{frontier}
 \keyword{spatial}
 \keyword{stochastic}
-

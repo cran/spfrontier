@@ -19,7 +19,7 @@
 \item{Cargo}{A total volume of cargo served by an airport}
 \item{Population100km}{A number of inhabitants, living in 100 km around an airport}
 \item{Population200km}{A number of inhabitants, living in 200 km around an airport}
-\item{Island}{1 if an airpiort is located on an island; 0 otherwise}
+\item{Island}{1 if an airport is located on an island; 0 otherwise}
 \item{GDPpc}{Gross domestic product per capita in airport's NUTS3 region}
 \item{RevenueTotal}{Airport total revenue}
 \item{RevenueAviation}{Airport aviation revenue}
@@ -54,4 +54,3 @@
 The \code{spfrontier} package includes the dataset \code{airports}, 
 containing information about European airports infrastructure and traffic statistics in 2011.
 }
-

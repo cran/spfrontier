@@ -3,23 +3,23 @@
 \docType{class}
 \name{ModelEstimates-class}
 \alias{ModelEstimates-class}
-\alias{coefficients}
-\alias{coefficients,ModelEstimates-method}
-\alias{efficiencies}
-\alias{efficiencies,ModelEstimates-method}
-\alias{fitted}
-\alias{fitted,ModelEstimates-method}
-\alias{hessian}
-\alias{hessian,ModelEstimates-method}
-\alias{residuals}
-\alias{residuals,ModelEstimates-method}
-\alias{resultParams}
-\alias{resultParams,ModelEstimates-method}
 \alias{show,ModelEstimates-method}
-\alias{status}
-\alias{status,ModelEstimates-method}
-\alias{stdErrors}
+\alias{coefficients,ModelEstimates-method}
+\alias{coefficients}
+\alias{resultParams,ModelEstimates-method}
+\alias{resultParams}
+\alias{fitted,ModelEstimates-method}
+\alias{fitted}
+\alias{efficiencies,ModelEstimates-method}
+\alias{efficiencies}
+\alias{residuals,ModelEstimates-method}
+\alias{residuals}
 \alias{stdErrors,ModelEstimates-method}
+\alias{stdErrors}
+\alias{hessian,ModelEstimates-method}
+\alias{hessian}
+\alias{status,ModelEstimates-method}
+\alias{status}
 \alias{summary,ModelEstimates-method}
 \title{Model Estimation Results}
 \usage{
@@ -58,26 +58,6 @@ efficiencies(object)
 }
 \description{
 \code{ModelEstimates} stores information about MLE estimates of a spatial stochastic frontier model
-
-Method \code{status} returns estimation status
-
-Method \code{resultParams} returns raw estimated coefficients
-
-Method \code{hessian} returns Hessian matrix for estimated coefficients
-
-Method \code{stdErrors} returns standard errors of estimated coefficients
-
-Method \code{efficiencies} returns efficiency estimates
-
-Method \code{show} prints estimated coefficients
-
-Method \code{coefficients} returns estimated coefficients
-
-Method \code{fitted} returns model fitted values
-
-Method \code{residuals} returns residuals
-
-Method \code{summary} prints summary of the estimated model
 }
 \details{
 \code{ModelEstimates} stores all parameter estimates and additional statistics, available after estimation of a spatial stochastic frontier model.

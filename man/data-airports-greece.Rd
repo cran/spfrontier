@@ -44,4 +44,3 @@ In Proceeding of the 2010 International Kuhmo-Nectar Conference on Transport Eco
 The \code{spfrontier} package includes the dataset \code{airports}, 
 containing information about Greece airports infrastructure and traffic statistics in 2011.
 }
-

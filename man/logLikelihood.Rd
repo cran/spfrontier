@@ -4,9 +4,17 @@
 \alias{logLikelihood}
 \title{Calculation of the log likelihood function for the spatial stochastic frontier model}
 \usage{
-logLikelihood(formula, data, W_y = NULL, W_v = NULL, W_u = NULL,
-  inefficiency = "half-normal", values, logging = c("quiet", "info",
-  "debug"), costFrontier = F)
+logLikelihood(
+  formula,
+  data,
+  W_y = NULL,
+  W_v = NULL,
+  W_u = NULL,
+  inefficiency = "half-normal",
+  values,
+  logging = c("quiet", "info", "debug"),
+  costFrontier = F
+)
 }
 \arguments{
 \item{formula}{an object of class "\code{\link{formula}}"}
@@ -37,4 +45,3 @@ for the spatial stochastic frontier model
 This function is exported from the package for testing and presentation purposes
 A list of arguments of the function exactly matches the corresponding list of the \code{\link{spfrontier}} function
 }
-

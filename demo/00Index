@@ -1,3 +1,4 @@
 simulation  R code for spfrontier simulation tests
 airports    R example for European airports data
 frontier_comparison    Comparison of frontier (Coelli's Frontier 4.1) and spfrontier estimators
+RTE_paper    Source codes for Pavlyuk, D., 2016. Implication of spatial heterogeneity for airports’ efficiency estimation. Research in Transportation Economics 56, 15–24. https://doi.org/10.1016/j.retrec.2016.07.002

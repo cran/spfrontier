@@ -32,7 +32,7 @@ NULL
 #' \item{Cargo}{A total volume of cargo served by an airport}
 #' \item{Population100km}{A number of inhabitants, living in 100 km around an airport}
 #' \item{Population200km}{A number of inhabitants, living in 200 km around an airport}
-#' \item{Island}{1 if an airpiort is located on an island; 0 otherwise}
+#' \item{Island}{1 if an airport is located on an island; 0 otherwise}
 #' \item{GDPpc}{Gross domestic product per capita in airport's NUTS3 region}
 #' \item{RevenueTotal}{Airport total revenue}
 #' \item{RevenueAviation}{Airport aviation revenue}
@@ -109,5 +109,56 @@ NULL
 #' \describe{
 #' \item{}{"Airport efficiency and public investment in Greece" (2010) 
 #' In Proceeding of the 2010 International Kuhmo-Nectar Conference on Transport Economics, University of Valencia, Spain.}
+#' }
+NULL
+
+
+#' European airports statistical data (used for the RTE paper)
+#' 
+#' The \code{spfrontier} package includes the dataset \code{RTEpaper}, 
+#' containing information about European airports infrastructure and traffic statistics in 2011 and used in 
+#' Pavlyuk, D., 2016. Implication of spatial heterogeneity for airports’ efficiency estimation. 
+#' Research in Transportation Economics 56, 15–24. https://doi.org/10.1016/j.retrec.2016.07.002.
+#' 
+#' 
+#' @name RTEpaper
+#' @rdname RTEpaper
+#' @docType data
+#' @format A dataframe with 39 observations on the following 24 variables.
+#'
+#' \describe{
+#' 
+#' \item{ID}{Airport identifier}
+#' \item{ICAO_code}{Airport ICAO code}
+#' \item{Country}{Airport country}
+#' \item{AirportName}{Airport title}
+#' \item{latitude}{Airport latitude}
+#' \item{longitude}{Airport longitude}
+#' \item{Year}{Year of observation}
+#' \item{PAX}{A number of passengers served by an airport}
+#' \item{cargo}{A total volume of cargo served by an airport}
+#' \item{Population100km}{A number of inhabitants, living in 100 km around an airport}
+#' \item{Island}{1 if an airport is located on an island; 0 otherwise}
+#' \item{SouthIsland}{1 if an airport is located on a European South island; 0 otherwise}
+#' \item{Routes}{Number of routes, served byt the airport}
+#' \item{RunwayCount}{A number of airport runways}
+#' \item{NUTS0}{NUTS0 region}
+#' \item{NUTS1}{NUTS1 region}
+#' \item{NUTS2}{NUTS2 region}
+#' \item{NUTS3}{NUTS3 region}
+#' \item{Tourists}{Number of tourists in airport's NUTS2 region}
+#' \item{Area}{Area of airport's NUTS2 region}
+#' \item{GDPpc}{Gross domestic product per capita in airport's NUTS3 region}
+#' \item{hub}{Hub status of the airport, based on the number of served routes}
+#' \item{international}{INternational status of the airport}
+#' \item{ownership}{Ownership of the airport - public, minor private, major private, private}
+#' \item{RunwayLength}{Total length of the airport's runways}
+#' 
+#' 
+#' }
+#' @source 
+#' \describe{
+#' \item{}{#' Pavlyuk, D., 2016. Implication of spatial heterogeneity for airports’ efficiency estimation. 
+#' Research in Transportation Economics 56, 15–24. https://doi.org/10.1016/j.retrec.2016.07.002.}
 #' }
 NULL

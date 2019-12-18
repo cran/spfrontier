@@ -4,10 +4,19 @@
 \alias{spfrontier}
 \title{Spatial stochastic frontier model}
 \usage{
-spfrontier(formula, data, W_y = NULL, W_v = NULL, W_u = NULL,
-  inefficiency = "half-normal", initialValues = "errorsarlm",
-  logging = c("quiet", "info", "debug"), control = NULL, onlyCoef = F,
-  costFrontier = F)
+spfrontier(
+  formula,
+  data,
+  W_y = NULL,
+  W_v = NULL,
+  W_u = NULL,
+  inefficiency = "half-normal",
+  initialValues = "errorsarlm",
+  logging = c("quiet", "info", "debug"),
+  control = NULL,
+  onlyCoef = F,
+  costFrontier = F
+)
 }
 \arguments{
 \item{formula}{an object of class "\code{\link{formula}}": 
@@ -71,4 +80,3 @@ Kumbhakar, S.C. and Lovell, C.A.K (2000), Stochastic Frontier Analysis, Cambridg
 \keyword{frontier}
 \keyword{spatial}
 \keyword{stochastic}
-
